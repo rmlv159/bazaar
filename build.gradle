@@ -15,11 +15,29 @@ repositories {
 	mavenCentral()
 }
 
+configurations {
+	jaxb
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation 'javax.xml.bind:jaxb-api:2.3.1'
+	jaxb 'com.sun.xml.bind:jaxb-xjc:2.3.3'
+	jaxb 'javax.xml.bind:jaxb-api:2.3.1'
+	jaxb 'org.glassfish.jaxb:jaxb-runtime:2.3.3'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+task xjc(type: JavaExec) {
+	main = 'com.sun.tools.xjc.XJCFacade'
+	classpath configurations.jaxb
+	version = 'v1'
+	args = [
+			'-d', 'src/main/java',
+			'-p', 'com.r.bazaar.entity.schema.' + version,
+			'src/main/resources/schema/v1/Danish_SAF-T_Financial_Schema_v_1_0.xsd']
 }
