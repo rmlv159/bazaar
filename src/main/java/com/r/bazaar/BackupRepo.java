@@ -1,6 +1,6 @@
 package com.r.bazaar;
 
-import com.r.bazaar.model.Backup;
+import com.r.bazaar.lib.model.Backup;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Component;
