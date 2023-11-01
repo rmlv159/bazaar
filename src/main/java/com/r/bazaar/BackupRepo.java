@@ -31,13 +31,13 @@ public class BackupRepo {
     public void cacheSchema(String tableName, ArrayList<String> schema)
         throws IllegalArgumentException {
         if (schemaCache.containsKey(tableName)) {
-            //TODO enable again once table cache is evicated after each backup
+            //TODO enable again once table cache is evicted after each backup
 //            throw new IllegalArgumentException("table exists already");
         }
         schemaCache.put(tableName, schema);
     }
 
-    public void saveRow(String tableName, ArrayList<String> data) throws Exception {
+    public void saveRow(String tableName, ArrayList<String> data) {
         ArrayList<String> schema = schemaCache.get(tableName);
         if (null == schema) {
             throw new IllegalArgumentException("Table not present in schema");
@@ -45,7 +45,8 @@ public class BackupRepo {
         //input validation has already been done
         for (int i = 0; i < data.size(); i++) {
             String type = schema.get(i);
-            System.out.println(decoder.base64(type, data.get(i)));
+//            System.out.println(decoder.base64(type, data.get(i)));
+            System.out.println(data.get(i));
         }
     }
 }

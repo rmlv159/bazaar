@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.r.bazaar.lib.model.Backup;
 import com.r.bazaar.lib.model.IntelliSyncConfig;
-import com.r.bazaar.model.Field;
 import com.r.bazaar.model.Table;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -84,7 +83,7 @@ public class BazaarAPI {
         }
     }
 
-    @PostMapping(path = "/v1/row")
+    @PostMapping(path = "/v1/compressed-row")
     public ResponseEntity<String> receiveZippedEncodedRowData(
         HttpServletRequest request,
         @RequestHeader("Content-Encoding") String contentEncoding
@@ -113,4 +112,26 @@ public class BazaarAPI {
         }
         return ResponseEntity.badRequest().body("Expected gzipped content");
     }
+
+    @PostMapping(path = "/v1/row")
+    public ResponseEntity<String> receiveZippedEncodedRowData(
+        HttpServletRequest request,
+        //plus client id and secret for verification
+//        @PathVariable("customer")
+//        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
+//            String customer,
+        @RequestParam("table-name")
+        @Parameter(description = "", required = true, example = "CRONUS Danmark A_S$Customer")
+            String tableName,
+        @RequestBody ArrayList<String> data
+    ) throws IOException {
+        try {
+            repo.saveRow(tableName, data);
+        } catch (Throwable t) {
+            return ResponseEntity.badRequest().body("Expected gzipped content");
+        }
+        return ResponseEntity.ok("Data received successfully");
+    }
 }
+
+
