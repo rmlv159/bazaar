@@ -1,11 +1,16 @@
 package com.r.bazaar;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.r.bazaar.lib.model.Backup;
 import com.r.bazaar.lib.model.IntelliSyncConfig;
+import com.r.bazaar.model.Field;
+import com.r.bazaar.model.Table;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +19,9 @@ import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,6 +30,10 @@ public class BazaarAPI {
 
     @Autowired
     private BackupRepo repo;
+    @Autowired
+    private InputValidator inputValidator;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @GetMapping("/v1/weekly-backups")
     public List<Backup> getWeekly() {
@@ -53,18 +64,51 @@ public class BazaarAPI {
         return intelliSyncConfig;
     }
 
-    @PostMapping(path = "/v1/weekly-backup")
-    public ResponseEntity<String> receiveGzippedData(HttpServletRequest request,
-        @RequestHeader("Content-Encoding") String contentEncoding)
-        throws IOException {
+    @PostMapping(path = "/v1/schema")
+    public ResponseEntity<String> receiveTableSchema(
+        //plus client id and secret for verification
+//        @PathVariable("customer")
+//        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
+//            String customer,
+        @RequestBody
+            Table table
+    ) {
+        try {
+            inputValidator.runForSequencedTypes(table.getSequencedTypes());
+            //TODO use schema
+            repo.cacheSchema(table.getName(), table.getSequencedTypes());
+            return ResponseEntity.ok("Data received successfully");
+            //TODO handle more specifically
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Expected gzipped content");
+        }
+    }
 
+    @PostMapping(path = "/v1/row")
+    public ResponseEntity<String> receiveZippedEncodedRowData(
+        HttpServletRequest request,
+        @RequestHeader("Content-Encoding") String contentEncoding
+        ,
+        //plus client id and secret for verification
+//        @PathVariable("customer")
+//        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
+//            String customer,
+        @RequestParam("table-name")
+        @Parameter(description = "", required = true, example = "CRONUS Danmark A_S$Customer")
+            String tableName
+    ) throws IOException {
         if (contentEncoding != null && contentEncoding.equals("gzip")) {
-            // If the content is gzipped, decompress it
             GZIPInputStream gzipInputStream = new GZIPInputStream(request.getInputStream());
             String decompressed = StreamUtils.copyToString(gzipInputStream, StandardCharsets.UTF_8);
-            System.out.println("Received Gzipped Data: " + decompressed);
 
-            // Process the data (just printing in this example)
+            ArrayList<String> data = objectMapper.readValue(decompressed,
+                new TypeReference<>() {
+                });
+            try {
+                repo.saveRow(tableName, data);
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body("Expected gzipped content");
+            }
             return ResponseEntity.ok("Data received and decompressed successfully");
         }
         return ResponseEntity.badRequest().body("Expected gzipped content");

@@ -27,6 +27,7 @@ dependencies {
 //	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'javax.xml.bind:jaxb-api:2.3.1'
 	implementation group: 'io.swagger.core.v3', name: 'swagger-annotations', version: '2.2.3'
+	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.2'
 	jaxb 'com.sun.xml.bind:jaxb-xjc:2.3.3'
 	jaxb 'javax.xml.bind:jaxb-api:2.3.1'
 	jaxb 'org.glassfish.jaxb:jaxb-runtime:2.3.3'
