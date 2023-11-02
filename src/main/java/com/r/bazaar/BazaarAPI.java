@@ -43,7 +43,7 @@ public class BazaarAPI {
     @ResponseBody
     public IntelliSyncConfig fetch() {
         IntelliSyncConfig intelliSyncConfig = new IntelliSyncConfig();
-        intelliSyncConfig.getRelevantTables().add("[dbo].[CRONUS Danmark A_S$Gen_ Journal Line]");
+        intelliSyncConfig.getRelevantTables().add("[dbo].[CRONUS Danmark A_S$G_L Entry]");
         return intelliSyncConfig;
     }
 
