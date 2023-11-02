@@ -13,13 +13,39 @@ java {
 
 repositories {
 	mavenCentral()
+	mavenLocal()
+}
+
+configurations {
+	jaxb
 }
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+//	implementation 'org.springframework.security:spring-security-core'
+//	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'javax.xml.bind:jaxb-api:2.3.1'
+	implementation group: 'io.swagger.core.v3', name: 'swagger-annotations', version: '2.2.3'
+	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.2'
+	jaxb 'com.sun.xml.bind:jaxb-xjc:2.3.3'
+	jaxb 'javax.xml.bind:jaxb-api:2.3.1'
+	jaxb 'org.glassfish.jaxb:jaxb-runtime:2.3.3'
+
+	implementation group:'com.r', name: 'bazaar-lib', version: '0.0.1-SNAPSHOT'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+//https://github.com/rackerlabs/gradle-jaxb-plugin/blob/master/examples/hello-world-schema/hello-world-schema.gradle
+task xjc(type: JavaExec) {
+	main = 'com.sun.tools.xjc.XJCFacade'
+	classpath configurations.jaxb
+	version = 'v1'
+	args = [
+			'-d', 'src/main/java',
+			'-p', 'com.r.bazaar.entity.schema.' + version,
+			'src/main/resources/schema/v1/Danish_SAF-T_Financial_Schema_v_1_0.xsd']
 }
