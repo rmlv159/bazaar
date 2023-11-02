@@ -83,8 +83,39 @@ public class BazaarAPI {
         }
     }
 
+    @PostMapping(path = "/v1/encoded-compressed-row")
+    public ResponseEntity<String> receiveEncodedCompressedRowData(
+        HttpServletRequest request,
+        @RequestHeader("Content-Encoding") String contentEncoding
+        ,
+        //plus client id and secret for verification
+//        @PathVariable("customer")
+//        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
+//            String customer,
+        @RequestParam("table-name")
+        @Parameter(description = "", required = true, example = "CRONUS Danmark A_S$Customer")
+            String tableName
+    ) throws IOException {
+        if (contentEncoding != null && contentEncoding.equals("gzip")) {
+            GZIPInputStream gzipInputStream = new GZIPInputStream(request.getInputStream());
+            String decompressed = StreamUtils.copyToString(gzipInputStream, StandardCharsets.UTF_8);
+
+            ArrayList<String> data = objectMapper.readValue(decompressed,
+                new TypeReference<>() {
+                });
+            try {
+                //TODO impl separate methods for decoding
+                repo.saveRow(tableName, data);
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body("An error occurred");
+            }
+            return ResponseEntity.ok("Data received and decompressed successfully");
+        }
+        return ResponseEntity.badRequest().body("An error occurred");
+    }
+
     @PostMapping(path = "/v1/compressed-row")
-    public ResponseEntity<String> receiveZippedEncodedRowData(
+    public ResponseEntity<String> receiveCompressedRowData(
         HttpServletRequest request,
         @RequestHeader("Content-Encoding") String contentEncoding
         ,
@@ -106,15 +137,15 @@ public class BazaarAPI {
             try {
                 repo.saveRow(tableName, data);
             } catch (Exception e) {
-                return ResponseEntity.badRequest().body("Expected gzipped content");
+                return ResponseEntity.badRequest().body("An error occurred");
             }
             return ResponseEntity.ok("Data received and decompressed successfully");
         }
-        return ResponseEntity.badRequest().body("Expected gzipped content");
+        return ResponseEntity.badRequest().body("An error occurred");
     }
 
     @PostMapping(path = "/v1/row")
-    public ResponseEntity<String> receiveZippedEncodedRowData(
+    public ResponseEntity<String> receiveRowData(
         HttpServletRequest request,
         //plus client id and secret for verification
 //        @PathVariable("customer")
@@ -128,7 +159,7 @@ public class BazaarAPI {
         try {
             repo.saveRow(tableName, data);
         } catch (Throwable t) {
-            return ResponseEntity.badRequest().body("Expected gzipped content");
+            return ResponseEntity.badRequest().body("An error occurred");
         }
         return ResponseEntity.ok("Data received successfully");
     }

@@ -45,8 +45,10 @@ public class BackupRepo {
         //input validation has already been done
         for (int i = 0; i < data.size(); i++) {
             String type = schema.get(i);
-//            System.out.println(decoder.base64(type, data.get(i)));
             System.out.println(data.get(i));
+
+            //TODO make separate
+//            System.out.println(decoder.base64(type, data.get(i)));
         }
     }
 }
