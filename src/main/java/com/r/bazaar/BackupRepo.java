@@ -16,6 +16,10 @@ public class BackupRepo {
     private final Map<String, ArrayList<String>> schemaCache = new HashMap<>();
     @Autowired
     private Decoder decoder;
+    //TODO make separate
+//            System.out.println(decoder.base64(type, data.get(i)));
+    @Autowired
+    private Packager packager;
 
     public List<Backup> getWeekly() {
         return List.of(
@@ -47,8 +51,7 @@ public class BackupRepo {
             String type = schema.get(i);
             System.out.println(data.get(i));
 
-            //TODO make separate
-//            System.out.println(decoder.base64(type, data.get(i)));
+            packager.run(data);
         }
     }
 }

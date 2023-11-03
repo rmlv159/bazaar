@@ -25,12 +25,20 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 //	implementation 'org.springframework.security:spring-security-core'
 //	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'javax.xml.bind:jaxb-api:2.3.1'
 	implementation group: 'io.swagger.core.v3', name: 'swagger-annotations', version: '2.2.3'
 	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.2'
-	jaxb 'com.sun.xml.bind:jaxb-xjc:2.3.3'
+
+//	//needed for xml writing
+	implementation group: 'org.eclipse.persistence', 	name: 'javax.persistence', 				version: '2.1.0'
+	implementation group: 'org.eclipse.persistence', 	name: 'org.eclipse.persistence.moxy', 	version: '2.7.7'
+	implementation group: 'javax.xml.bind', 			name: 'jaxb-api', 						version: '2.3.1'
+	implementation group: 'org.glassfish.jaxb',			name: 'jaxb-runtime', 					version: '4.0.4'
+	implementation group: 'jakarta.xml.bind', 			name: 'jakarta.xml.bind-api', 			version: '4.0.0'
+	implementation group: 'jakarta.activation', 		name: 'jakarta.activation-api', 		version: '2.1.2'
+
+	jaxb 'com.sun.xml.bind:jaxb-xjc:4.0.4'
 	jaxb 'javax.xml.bind:jaxb-api:2.3.1'
-	jaxb 'org.glassfish.jaxb:jaxb-runtime:2.3.3'
+	jaxb 'org.glassfish.jaxb:jaxb-runtime:4.0.4'
 
 	implementation group:'com.r', name: 'bazaar-lib', version: '0.0.1-SNAPSHOT'
 }
