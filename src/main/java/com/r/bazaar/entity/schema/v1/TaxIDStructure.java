@@ -53,7 +53,7 @@ import jakarta.xml.bind.annotation.XmlType;
 public class TaxIDStructure {
 
     /**
-     * The company’s VAT (MVA) number. This is the unique number/organization number. This element is mandatory if the company is subject to VAT (MVA).
+     * The companyâ€™s VAT (MVA) number. This is the unique number/organization number. This element is mandatory if the company is subject to VAT (MVA).
      * 
      */
     @XmlElement(name = "TaxRegistrationNumber", required = true)
@@ -91,7 +91,7 @@ public class TaxIDStructure {
     protected XMLGregorianCalendar taxVerificationDate;
 
     /**
-     * The company’s VAT (MVA) number. This is the unique number/organization number. This element is mandatory if the company is subject to VAT (MVA).
+     * The companyâ€™s VAT (MVA) number. This is the unique number/organization number. This element is mandatory if the company is subject to VAT (MVA).
      * 
      * @return
      *     possible object is

@@ -1,4 +1,4 @@
-package com.r.bazaar;
+package com.r.bazaar.input;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;

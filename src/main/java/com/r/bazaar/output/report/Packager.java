@@ -1,4 +1,4 @@
-package com.r.bazaar;
+package com.r.bazaar.output.report;
 
 import com.r.bazaar.entity.schema.v1.AuditFile;
 import com.r.bazaar.entity.schema.v1.AuditFile.GeneralLedgerEntries;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class Packager {
-
+//TODO where to map sourceDocumentID   customerID   supplierID from?
     @Autowired
     private XMLWriter xmlWriter = new XMLWriter();
 

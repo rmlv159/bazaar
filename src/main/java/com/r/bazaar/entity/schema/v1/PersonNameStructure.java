@@ -63,7 +63,7 @@ public class PersonNameStructure {
     @XmlElement(name = "Title")
     protected String title;
     /**
-     * First name of the person. If the name of the person is in an unstructured form, insert ìNotUsedî in this element and enter the full unstructured name in the LastName element.
+     * First name of the person. If the name of the person is in an unstructured form, insert ‚ÄúNotUsed‚Äù in this element and enter the full unstructured name in the LastName element.
      * 
      */
     @XmlElement(name = "FirstName", required = true)
@@ -81,7 +81,7 @@ public class PersonNameStructure {
     @XmlElement(name = "LastNamePrefix")
     protected String lastNamePrefix;
     /**
-     * Last name of the person. If the FirstName element has the text ìNotUsedî then this element should contain the full unstructured name of the person.
+     * Last name of the person. If the FirstName element has the text ‚ÄúNotUsed‚Äù then this element should contain the full unstructured name of the person.
      * 
      */
     @XmlElement(name = "LastName", required = true)
@@ -99,7 +99,7 @@ public class PersonNameStructure {
     @XmlElement(name = "Salutation")
     protected String salutation;
     /**
-     * Used for roles in the company, such as Daglig leder, Direkt¯r, Regnskabsmedarbejder, etc.
+     * Used for roles in the company, such as Daglig leder, Direkt√∏r, Regnskabsmedarbejder, etc.
      * 
      */
     @XmlElement(name = "OtherTitles")
@@ -131,7 +131,7 @@ public class PersonNameStructure {
     }
 
     /**
-     * First name of the person. If the name of the person is in an unstructured form, insert ìNotUsedî in this element and enter the full unstructured name in the LastName element.
+     * First name of the person. If the name of the person is in an unstructured form, insert ‚ÄúNotUsed‚Äù in this element and enter the full unstructured name in the LastName element.
      * 
      * @return
      *     possible object is
@@ -206,7 +206,7 @@ public class PersonNameStructure {
     }
 
     /**
-     * Last name of the person. If the FirstName element has the text ìNotUsedî then this element should contain the full unstructured name of the person.
+     * Last name of the person. If the FirstName element has the text ‚ÄúNotUsed‚Äù then this element should contain the full unstructured name of the person.
      * 
      * @return
      *     possible object is
@@ -281,7 +281,7 @@ public class PersonNameStructure {
     }
 
     /**
-     * Used for roles in the company, such as Daglig leder, Direkt¯r, Regnskabsmedarbejder, etc.
+     * Used for roles in the company, such as Daglig leder, Direkt√∏r, Regnskabsmedarbejder, etc.
      * 
      * Gets the value of the otherTitles property.
      * 

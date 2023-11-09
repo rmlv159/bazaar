@@ -1,4 +1,4 @@
-package com.r.bazaar;
+package com.r.bazaar.output.report;
 
 import com.r.bazaar.entity.schema.v1.AuditFile;
 import jakarta.xml.bind.JAXBContext;

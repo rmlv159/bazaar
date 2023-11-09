@@ -1,4 +1,4 @@
-package com.r.bazaar;
+package com.r.bazaar.input;
 
 import java.util.ArrayList;
 import org.springframework.stereotype.Component;

@@ -1,0 +1,7 @@
+environment:
+  local:
+    ddb-host: localhost
+    ddb-port: 8000
+  production:
+    ddb-host: localhost
+    ddb-port: 8000

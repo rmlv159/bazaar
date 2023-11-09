@@ -63,7 +63,7 @@ public class BankAccountStructure {
     @XmlElement(name = "IBANNumber")
     protected String ibanNumber;
     /**
-     * The number allocated to the account by the individual’s or company’s own bank.
+     * The number allocated to the account by the individualâ€™s or companyâ€™s own bank.
      * 
      */
     @XmlElement(name = "BankAccountNumber")
@@ -125,7 +125,7 @@ public class BankAccountStructure {
     }
 
     /**
-     * The number allocated to the account by the individual’s or company’s own bank.
+     * The number allocated to the account by the individualâ€™s or companyâ€™s own bank.
      * 
      * @return
      *     possible object is

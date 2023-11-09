@@ -50,7 +50,7 @@ import jakarta.xml.bind.annotation.XmlType;
 public class AmountStructure {
 
     /**
-     * Amount in the header’s default currency.
+     * Amount in the headerâ€™s default currency.
      * 
      */
     @XmlElement(name = "Amount", required = true)
@@ -75,7 +75,7 @@ public class AmountStructure {
     protected BigDecimal exchangeRate;
 
     /**
-     * Amount in the header’s default currency.
+     * Amount in the headerâ€™s default currency.
      * 
      * @return
      *     possible object is

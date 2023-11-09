@@ -27,6 +27,9 @@ dependencies {
 //	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation group: 'io.swagger.core.v3', name: 'swagger-annotations', version: '2.2.3'
 	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.2'
+	implementation group: 'com.typesafe', name: 'config', version: '1.4.2'
+	implementation group: 'com.amazonaws', name: 'aws-java-sdk-dynamodb', version: '1.12.582'
+	implementation group: 'org.postgresql', name: 'postgresql', version: '42.6.0'
 
 //	//needed for xml writing
 	implementation group: 'org.eclipse.persistence', 	name: 'javax.persistence', 				version: '2.1.0'
@@ -51,9 +54,8 @@ tasks.named('test') {
 task xjc(type: JavaExec) {
 	main = 'com.sun.tools.xjc.XJCFacade'
 	classpath configurations.jaxb
-	version = 'v1'
 	args = [
 			'-d', 'src/main/java',
-			'-p', 'com.r.bazaar.entity.schema.' + version,
+			'-p', 'com.r.bazaar.entity.schema.v1', //TODO make more dynamic
 			'src/main/resources/schema/v1/Danish_SAF-T_Financial_Schema_v_1_0.xsd']
 }
