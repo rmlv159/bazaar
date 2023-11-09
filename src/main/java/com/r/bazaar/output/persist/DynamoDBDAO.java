@@ -8,8 +8,9 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
-import com.r.bazaar.output.persist.DAO;
 import com.typesafe.config.Config;
+import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 public class DynamoDBDAO implements DAO {
@@ -69,7 +70,25 @@ public class DynamoDBDAO implements DAO {
     }
 
     @Override
-    public <T> void put(T t) {
+    public Map<Integer, List<String>> getTablesPerCustomer() {
+        //TODO implement
+        return null;
+    }
 
+    @Override
+    public String getCompanyCode(int clientId) {
+        //TODO implement
+        return null;
+    }
+
+    @Override
+    public <T> void put(T t) {
+        //TODO implement
+    }
+
+    @Override
+    public String getSystemName(Integer clientId) {
+        //TODO implement
+        return null;
     }
 }

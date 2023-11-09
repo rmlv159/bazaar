@@ -2,7 +2,6 @@ package com.r.bazaar;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.r.bazaar.input.BackupRepo;
 import com.r.bazaar.input.InputValidator;
 import com.r.bazaar.lib.model.Backup;
 import com.r.bazaar.lib.model.IntelliSyncConfig;
@@ -44,9 +43,7 @@ public class BazaarAPI {
     @GetMapping("/v1/fetch")
     @ResponseBody
     public IntelliSyncConfig fetch() {
-        IntelliSyncConfig intelliSyncConfig = new IntelliSyncConfig();
-        intelliSyncConfig.getRelevantTables().add("[dbo].[CRONUS Danmark A_S$G_L Entry]");
-        return intelliSyncConfig;
+        return repo.getIntelliSyncConfig();
     }
 
     @PostMapping(path = "/v1/initialize/{customer}", produces = "application/json")
