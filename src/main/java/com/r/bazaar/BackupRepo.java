@@ -1,8 +1,11 @@
 package com.r.bazaar;
 
+import com.r.bazaar.entity.internal.Client;
 import com.r.bazaar.input.Decoder;
 import com.r.bazaar.lib.model.IntelliSyncConfig;
+import com.r.bazaar.entity.model.Field;
 import com.r.bazaar.output.persist.DAO;
+import com.r.bazaar.output.persist.SystemSpecifics;
 import com.r.bazaar.output.report.Packager;
 import com.r.bazaar.lib.model.Backup;
 import java.time.LocalDateTime;
@@ -10,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,21 +23,26 @@ import org.springframework.stereotype.Component;
 public class BackupRepo {
 
     //TODO implement per customer and eviction
-    private final Map<String, ArrayList<String>> schemaCache = new HashMap<>();
-    private final Map<Integer, IntelliSyncConfig> configCache;
+    private final Map<String, ArrayList<String>> seqTypesCache = new HashMap<>();
+    private final Map<String, ArrayList<Field>> schemaCache = new HashMap<>();
+    private final Map<Integer, Client> clientCache;
     @Autowired
     private Decoder decoder;
     //TODO make separate
-//            System.out.println(decoder.base64(type, data.get(i)));
+    //            System.out.println(decoder.base64(type, data.get(i)));
     @Autowired
     private Packager packager;
+    @Autowired
+    private SystemSpecifics systemSpecifics;
 
     @Qualifier("dao")
     private DAO dao;
 
-    public BackupRepo(DAO dao) {
+    public BackupRepo(DAO dao, SystemSpecifics systemSpecifics) {
+        //TODO move this away from constructor and call externally
         this.dao = dao;
-        configCache = new HashMap<>();
+        this.systemSpecifics = systemSpecifics;
+        clientCache = new HashMap<>();
         initConfigCache();
     }
 
@@ -43,26 +52,25 @@ public class BackupRepo {
 //    }
 
     private void initConfigCache() {
-        for (var entry : dao.getTablesPerCustomer().entrySet()) {
+        for (var entry : dao.getTablesPerClient().entrySet()) {
             Integer clientId = entry.getKey();
+            Client client = new Client();
             IntelliSyncConfig intelliSyncConfig = new IntelliSyncConfig();
             List<String> preparedTablesNames = entry.getValue().stream()
                 .map(rawTableName -> {
                     String companyCode = dao.getCompanyCode(clientId);
+                    client.setCompanyCode(companyCode);
                     String systemName = dao.getSystemName(clientId);
+                    client.setSystemName(systemName);
                     if ("NAV18".equals(systemName)) {
-                        return new StringBuilder()
-                            .append("[dbo].[")
-                            .append(companyCode)
-                            .append("$")
-                            .append(rawTableName)
-                            .append("]").toString();
+                        return systemSpecifics.nav18(rawTableName, companyCode);
                     }
                     return "";
                 })
                 .collect(Collectors.toList());
             intelliSyncConfig.getRelevantTables().addAll(preparedTablesNames);
-            configCache.put(clientId, intelliSyncConfig);
+            client.setIntelliSyncConfig(intelliSyncConfig);
+            clientCache.put(clientId, client);
         }
     }
 
@@ -77,8 +85,16 @@ public class BackupRepo {
         );
     }
 
-    public void cacheSchema(String tableName, ArrayList<String> schema)
+    public void cacheSeqTypes(String tableName, ArrayList<String> seqTypes)
         throws IllegalArgumentException {
+        if (seqTypesCache.containsKey(tableName)) {
+            //TODO enable again once table cache is evicted after each backup
+//            throw new IllegalArgumentException("table exists already");
+        }
+        seqTypesCache.put(tableName, seqTypes);
+    }
+
+    public void cacheSchema(String tableName, ArrayList<Field> schema) {
         if (schemaCache.containsKey(tableName)) {
             //TODO enable again once table cache is evicted after each backup
 //            throw new IllegalArgumentException("table exists already");
@@ -86,21 +102,77 @@ public class BackupRepo {
         schemaCache.put(tableName, schema);
     }
 
-    public void saveRow(String tableName, ArrayList<String> data) {
-        ArrayList<String> schema = schemaCache.get(tableName);
-        if (null == schema) {
+    public void saveRow(int clientId, String tableName, ArrayList<String> data) {
+        Client client = clientCache.get(clientId);
+        ArrayList<String> seqTypes = seqTypesCache.get(tableName);
+        if (null == seqTypes) {
             throw new IllegalArgumentException("Table not present in schema");
         }
         //input validation has already been done
-        for (int i = 0; i < data.size(); i++) {
-            String type = schema.get(i);
-            System.out.println(data.get(i));
-
+        String genericTableName = systemSpecifics.lookUpGenericTableName(client, tableName);
+//        if ("gl_entries".equals(genericTableName)) {
+        ArrayList<Field> schema = schemaCache.get(tableName);
+        ArrayList<String> filteredFields = filter(clientId, client.getSystemName(),
+            genericTableName, schema, data);
+        dao.put(genericTableName, filteredFields, data);
 //            packager.run(data);
-        }
     }
 
-    public IntelliSyncConfig getIntelliSyncConfig() {
-        return configCache.get(1); //TODO make dynamic
+    private ArrayList<String> filter(int clientId, String systemName,
+        String tableName, ArrayList<Field> schema, ArrayList<String> data) {
+
+        Map<String, String> genericFieldsBySystemDefaultFields = dao.getGenericFieldsBySystemDefaultFields(
+            clientId, systemName, tableName);
+        Map<String, String> systemDefaultFieldsByGenericFields = dao.getSystemDefaultFieldsByGenericFields(
+            clientId, systemName, tableName);
+
+        ArrayList<String> defaultSystemFieldNames = schema.stream()
+            .map(Field::getName)
+            .collect(Collectors.toCollection(ArrayList::new));
+        ArrayList<String> filteredDefaultSystemFieldNames = genericFieldsBySystemDefaultFields.values()
+            .stream()
+            .map(systemDefaultFieldsByGenericFields::get)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toCollection(ArrayList::new));
+        ArrayList<String> filteredGenericFieldNames = defaultSystemFieldNames.stream()
+            .map(genericFieldsBySystemDefaultFields::get)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toCollection(ArrayList::new));
+
+        addGLFieldsToBeDerivedLater(filteredGenericFieldNames);
+
+        List<Integer> fieldIndexes = new ArrayList<>();
+        for (int i = 0; i < data.size(); i++) {
+            if (filteredDefaultSystemFieldNames.contains(defaultSystemFieldNames.get(i))) {
+                fieldIndexes.add(i);
+            }
+        }
+        ArrayList<String> temp = new ArrayList<>();
+        for (int i = 0; i < data.size(); i++) {
+            if (fieldIndexes.contains(i)) {
+                temp.add(data.get(i));
+            }
+        }
+        data.clear();
+        data.addAll(temp);
+        addGLValuesToBeDerivedLater(data);
+        return filteredGenericFieldNames;
+    }
+
+
+    private void addGLFieldsToBeDerivedLater(ArrayList<String> fields) {
+        fields.add("customer_id");
+        fields.add("backup_id");
+        fields.add("company_code");
+    }
+
+    private void addGLValuesToBeDerivedLater(ArrayList<String> data) {
+        data.add("1");
+        data.add("a4cd4efa98b553251cdef9345");
+        data.add("1000");
+    }
+
+    public IntelliSyncConfig getIntelliSyncConfig(int clientId) {
+        return clientCache.get(clientId).getIntelliSyncConfig(); //TODO make dynamic
     }
 }

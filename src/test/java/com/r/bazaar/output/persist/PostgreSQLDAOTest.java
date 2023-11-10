@@ -7,7 +7,6 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 
 class PostgreSQLDAOTest {
 
@@ -31,7 +30,7 @@ class PostgreSQLDAOTest {
                 put(1, List.of("G_L Entry"));
             }
         };
-        assertEquals(expected, postgreSQLDAO.getTablesPerCustomer());
+        assertEquals(expected, postgreSQLDAO.getTablesPerClient());
     }
 
     @Test

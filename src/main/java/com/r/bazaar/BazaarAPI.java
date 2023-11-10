@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.r.bazaar.input.InputValidator;
 import com.r.bazaar.lib.model.Backup;
 import com.r.bazaar.lib.model.IntelliSyncConfig;
-import com.r.bazaar.model.Table;
+import com.r.bazaar.entity.model.Table;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -42,17 +42,21 @@ public class BazaarAPI {
 
     @GetMapping("/v1/fetch")
     @ResponseBody
-    public IntelliSyncConfig fetch() {
-        return repo.getIntelliSyncConfig();
+    public IntelliSyncConfig fetch(
+        @RequestParam("client-id")
+        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
+            int clientId) {
+        return repo.getIntelliSyncConfig(clientId);
     }
 
+    //TODO delete?
     @PostMapping(path = "/v1/initialize/{customer}", produces = "application/json")
     @ResponseBody
     public IntelliSyncConfig postInitialization(
         //plus client id and secret for verification
-        @PathVariable("customer")
+        @PathVariable("client-id")
         @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
-            String customer) {
+            int clientId) {
 
         IntelliSyncConfig intelliSyncConfig = new IntelliSyncConfig();
 
@@ -62,19 +66,22 @@ public class BazaarAPI {
         return intelliSyncConfig;
     }
 
+    //TODO make requests async
+
     @PostMapping(path = "/v1/schema")
     public ResponseEntity<String> receiveTableSchema(
         //plus client id and secret for verification
-//        @PathVariable("customer")
-//        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
-//            String customer,
+        @RequestParam("client-id")
+        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
+            int clientId,
         @RequestBody
             Table table
     ) {
         try {
             inputValidator.runForSequencedTypes(table.getSequencedTypes());
             //TODO use schema
-            repo.cacheSchema(table.getName(), table.getSequencedTypes());
+            repo.cacheSeqTypes(table.getName(), table.getSequencedTypes());
+            repo.cacheSchema(table.getName(), table.getSchema());
             return ResponseEntity.ok("Data received successfully");
             //TODO handle more specifically
         } catch (Exception e) {
@@ -88,9 +95,9 @@ public class BazaarAPI {
         @RequestHeader("Content-Encoding") String contentEncoding
         ,
         //plus client id and secret for verification
-//        @PathVariable("customer")
-//        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
-//            String customer,
+        @RequestParam("client-id")
+        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
+            int clientId,
         @RequestParam("table-name")
         @Parameter(description = "", required = true, example = "CRONUS Danmark A_S$Customer")
             String tableName
@@ -104,7 +111,7 @@ public class BazaarAPI {
                 });
             try {
                 //TODO impl separate methods for decoding
-                repo.saveRow(tableName, data);
+                repo.saveRow(clientId, tableName, data);
             } catch (Exception e) {
                 return ResponseEntity.badRequest().body("An error occurred");
             }
@@ -119,9 +126,9 @@ public class BazaarAPI {
         @RequestHeader("Content-Encoding") String contentEncoding
         ,
         //plus client id and secret for verification
-//        @PathVariable("customer")
-//        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
-//            String customer,
+        @RequestParam("client-id")
+        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
+            int clientId,
         @RequestParam("table-name")
         @Parameter(description = "", required = true, example = "CRONUS Danmark A_S$Customer")
             String tableName
@@ -134,7 +141,7 @@ public class BazaarAPI {
                 new TypeReference<>() {
                 });
             try {
-                repo.saveRow(tableName, data);
+                repo.saveRow(clientId, tableName, data);
             } catch (Exception e) {
                 return ResponseEntity.badRequest().body("An error occurred");
             }
@@ -147,16 +154,16 @@ public class BazaarAPI {
     public ResponseEntity<String> receiveRowData(
         HttpServletRequest request,
         //plus client id and secret for verification
-//        @PathVariable("customer")
-//        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
-//            String customer,
+        @RequestParam("client-id")
+        @Parameter(description = "Pre-registered and pre-configured customer id", required = true, example = "81348123")
+            int clientId,
         @RequestParam("table-name")
         @Parameter(description = "", required = true, example = "CRONUS Danmark A_S$Customer")
             String tableName,
         @RequestBody ArrayList<String> data
     ) throws IOException {
         try {
-            repo.saveRow(tableName, data);
+            repo.saveRow(clientId, tableName, data);
         } catch (Throwable t) {
             return ResponseEntity.badRequest().body("An error occurred");
         }

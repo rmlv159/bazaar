@@ -1,4 +1,4 @@
-package com.r.bazaar.model;
+package com.r.bazaar.entity.model;
 
 //TODO warning, not the same as in IntelliSync, if you consider moving it, bare in mind not mingling json and pojo
 public class Field {

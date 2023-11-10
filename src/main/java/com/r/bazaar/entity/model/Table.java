@@ -1,4 +1,4 @@
-package com.r.bazaar.model;
+package com.r.bazaar.entity.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;

@@ -1,5 +1,6 @@
 package com.r.bazaar.output.persist;
 
+import com.r.bazaar.entity.model.Field;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -9,9 +10,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class PostgreSQLDAO implements DAO {
 
+    //TODO string is getting logged! Remove!
     private final String connectionString;
 
     public PostgreSQLDAO() {
@@ -25,7 +28,7 @@ public class PostgreSQLDAO implements DAO {
     }
 
     @Override
-    public Map<Integer, List<String>> getTablesPerCustomer() {
+    public Map<Integer, List<String>> getTablesPerClient() {
         Map<Integer, List<String>> map = new HashMap<>();
         String query = "SELECT c.id,\n"
             + "\t\ts.system_default_table_name \n"
@@ -70,11 +73,20 @@ public class PostgreSQLDAO implements DAO {
     }
 
     @Override
-    public <T> void put(T t) {
-        String insertSql = "insert blab lla";
+    public void put(String tableName, ArrayList<String> fieldNames, ArrayList<String> data) {
+        String fieldNamesStr = String.join(", ", fieldNames);
+        String dataValues = data.stream()
+            .map(value -> "'" + value + "'")
+            .collect(Collectors.joining(", "));
+
+        //TODO avoid injection attacks
+        //TODO remove schema from here and add to table name
+        String insertSql = String.format("INSERT INTO erp.%s (%s) VALUES (%s);", tableName,
+            fieldNamesStr, dataValues);
+
         try (Connection connection = DriverManager.getConnection(connectionString);
             PreparedStatement preparedStatement = connection.prepareStatement(insertSql)) {
-            preparedStatement.executeUpdate();
+            preparedStatement.execute();
         } catch (SQLException e) {
             e.printStackTrace();
             // Handle exceptions appropriately
@@ -105,5 +117,84 @@ public class PostgreSQLDAO implements DAO {
         return systemName;
     }
 
+    @Override
+    public Map<String, String> getGenericFieldsBySystemDefaultFields(int clientId,
+        String systemName, String tableName) {
+        //TODO make nicer
+        Map<String, String> genericFieldsBySystemDefaultFields = new HashMap<>();
+        String query = "SELECT a.generic_field_name, a.system_default_field_name "
+            + "FROM erp.system_schema_mapping a "
+            + "LEFT JOIN erp.systems b "
+            + " ON a.system_id = b.id "
+            + "WHERE b.system_name = ? "
+            + "AND a.generic_table_name = ?";
+        try (
+            Connection connection = DriverManager.getConnection(connectionString);
+            PreparedStatement preparedStatement = connection.prepareStatement(query)
+        ) {
+            preparedStatement.setString(1, systemName);
+            preparedStatement.setString(2, tableName);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                genericFieldsBySystemDefaultFields.put(
+                    resultSet.getString("system_default_field_name"),
+                    resultSet.getString("generic_field_name"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return genericFieldsBySystemDefaultFields;
+    }
+
+    @Override
+    public Map<String, String> getSystemDefaultFieldsByGenericFields(int clientId,
+        String systemName, String tableName) {
+        //TODO make nicer
+        Map<String, String> systemDefaultFieldsByGenericFields = new HashMap<>();
+        String query = "SELECT a.generic_field_name, a.system_default_field_name "
+            + "FROM erp.system_schema_mapping a "
+            + "LEFT JOIN erp.systems b "
+            + " ON a.system_id = b.id "
+            + "WHERE b.system_name = ? "
+            + "AND a.generic_table_name = ?";
+        try (
+            Connection connection = DriverManager.getConnection(connectionString);
+            PreparedStatement preparedStatement = connection.prepareStatement(query)
+        ) {
+            preparedStatement.setString(1, systemName);
+            preparedStatement.setString(2, tableName);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                systemDefaultFieldsByGenericFields.put(
+                    resultSet.getString("generic_field_name"),
+                    resultSet.getString("system_default_field_name"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return systemDefaultFieldsByGenericFields;
+    }
+
+    @Override
+    public String getGenericTableName(String defaultSystemTableName) {
+        //TODO make nicer
+        String tableName = "";
+        String query = "SELECT distinct generic_table_name "
+            + "FROM erp.system_schema_mapping "
+            + "WHERE system_default_table_name = ?";
+        try (
+            Connection connection = DriverManager.getConnection(connectionString);
+            PreparedStatement preparedStatement = connection.prepareStatement(query)
+        ) {
+            preparedStatement.setString(1, defaultSystemTableName);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                tableName = resultSet.getString("generic_table_name");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return tableName;
+    }
 }
 

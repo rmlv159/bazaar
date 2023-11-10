@@ -8,7 +8,9 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
+import com.r.bazaar.entity.model.Field;
 import com.typesafe.config.Config;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -70,7 +72,7 @@ public class DynamoDBDAO implements DAO {
     }
 
     @Override
-    public Map<Integer, List<String>> getTablesPerCustomer() {
+    public Map<Integer, List<String>> getTablesPerClient() {
         //TODO implement
         return null;
     }
@@ -82,13 +84,33 @@ public class DynamoDBDAO implements DAO {
     }
 
     @Override
-    public <T> void put(T t) {
+    public void put(String tableName, ArrayList<String> fieldNames, ArrayList<String> data) {
         //TODO implement
     }
 
     @Override
     public String getSystemName(Integer clientId) {
         //TODO implement
+        return null;
+    }
+
+    @Override
+    public Map<String, String> getGenericFieldsBySystemDefaultFields(int clientId, String systemName,
+        String tableName) {
+        //TODO impl
+        return null;
+    }
+
+    @Override
+    public Map<String, String> getSystemDefaultFieldsByGenericFields(int clientId,
+        String systemName, String tableName) {
+        //TODO impl
+        return null;
+    }
+
+    @Override
+    public String getGenericTableName(String defaultSystemTableName) {
+        //TODO impl
         return null;
     }
 }

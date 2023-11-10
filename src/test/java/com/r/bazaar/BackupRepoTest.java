@@ -28,7 +28,7 @@ class BackupRepoTest {
         IntelliSyncConfig expected = new IntelliSyncConfig();
         expected.getRelevantTables().add("[dbo].[CRONUS Danmark A_S$G_L Entry]");
         assertAll(
-            () -> assertEquals(expected.getRelevantTables(), backupRepo.getIntelliSyncConfig().getRelevantTables())
+            () -> assertEquals(expected.getRelevantTables(), backupRepo.getIntelliSyncConfig(1).getRelevantTables())
         );
     }
 }
