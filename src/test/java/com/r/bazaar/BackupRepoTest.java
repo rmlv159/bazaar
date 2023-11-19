@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.r.bazaar.lib.model.IntelliSyncConfig;
 import com.r.bazaar.output.persist.PostgreSQLDAO;
+import com.r.bazaar.output.persist.SystemSpecifics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,7 @@ class BackupRepoTest {
 
     @BeforeEach
     void setUp() {
-        backupRepo = new BackupRepo(new PostgreSQLDAO());
+        backupRepo = new BackupRepo(new PostgreSQLDAO(), new SystemSpecifics(new PostgreSQLDAO()));
     }
 
     @AfterEach

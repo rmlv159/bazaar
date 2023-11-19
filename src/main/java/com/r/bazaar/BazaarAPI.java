@@ -79,7 +79,6 @@ public class BazaarAPI {
     ) {
         try {
             inputValidator.runForSequencedTypes(table.getSequencedTypes());
-            //TODO use schema
             repo.cacheSeqTypes(table.getName(), table.getSequencedTypes());
             repo.cacheSchema(table.getName(), table.getSchema());
             return ResponseEntity.ok("Data received successfully");

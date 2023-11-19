@@ -28,8 +28,6 @@ public class BackupRepo {
     private final Map<Integer, Client> clientCache;
     @Autowired
     private Decoder decoder;
-    //TODO make separate
-    //            System.out.println(decoder.base64(type, data.get(i)));
     @Autowired
     private Packager packager;
     @Autowired
