@@ -39,7 +39,7 @@ class CreateTest {
     void ddl() {
         Create create = new Create();
         Map<String, ArrayList<Attribute>> tablesToSchema = new HashMap<>();
-        create.createDDL(AuditFile.class, tablesToSchema);
+        create.createDDL(null, AuditFile.class, tablesToSchema);
         List<String> statement = create.createStatement(tablesToSchema);
         List<String> expected = List.of();
         assertEquals(expected, statement);

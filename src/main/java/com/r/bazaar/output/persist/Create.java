@@ -15,7 +15,6 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.r.bazaar.entity.internal.Attribute;
 import com.r.bazaar.entity.schema.v1.AuditFile;
-import jakarta.xml.bind.JAXBElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -24,8 +23,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.springframework.util.StringUtils;
 
 public class Create {
@@ -141,32 +138,46 @@ public class Create {
 //                    if (actualTypeArguments[0] instanceof ParameterizedTypeImpl) {
 //                        continue;
 //                    }
-                    try {
-                        Class<?> rawType = (Class<?>) actualTypeArguments[0]; //TODO only work for one and one-dimensional generic classes
-                        fieldNames.add(rawType);
-                    } catch (ClassCastException e) {
-                        //This should only happen when actualTypeArguments[0] == JAXBElement.class only present in schema.v1 at AuditFile$MasterFiles$PhysicalStock$PhysicalStockEntry$StockCharacteristics.stockCharacteristicAndStockCharacteristicValue
-                        fieldNames.add(null);
-                        continue;
-                    }
+                try {
+                    Class<?> rawType = (Class<?>) actualTypeArguments[0]; //TODO only work for one and one-dimensional generic classes
+                    fieldNames.add(rawType);
+                } catch (ClassCastException e) {
+                    //This should only happen when actualTypeArguments[0] == JAXBElement.class only present in schema.v1 at AuditFile$MasterFiles$PhysicalStock$PhysicalStockEntry$StockCharacteristics.stockCharacteristicAndStockCharacteristicValue
+                    fieldNames.add(null);
+                }
             }
         }
         return fieldNames;
     }
 
-    public void createDDL(Class<?> structure, Map<String, ArrayList<Attribute>> tablesToSchema) {
+    public void createDDL(String parentName, Class<?> structure,
+        Map<String, ArrayList<Attribute>> tablesToSchema) {
         String simpleName = structure.getSimpleName();
 
         Field[] declaredFields = structure.getDeclaredFields();
-        final ArrayList<String> fieldNames = getFieldNames(declaredFields);
-        final ArrayList<String> fieldTypeNames = getFieldTypes(declaredFields);
-        final ArrayList<Class<?>> genericClasses = getGenericClasses(declaredFields);
+        ArrayList<String> fieldNames = getFieldNames(declaredFields);
+        ArrayList<String> fieldTypeNames = getFieldTypes(declaredFields);
+        ArrayList<Class<?>> genericClasses = getGenericClasses(declaredFields);
 
-        Map<String, Attribute> classAttributes = new HashMap<>();
-        for (int i = 0; i < fieldNames.size(); i++) {
-            classAttributes.put(fieldNames.get(i),
-                new Attribute(fieldNames.get(i), fieldTypeNames.get(i), genericClasses.get(i)));
+        Map<String, Attribute> classAttributes = getClassAttributes(
+            fieldNames, fieldTypeNames, genericClasses);
+        breakDownFields(parentName, structure, tablesToSchema, classAttributes, simpleName);
+    }
+
+    private void breakDownFields(String parentName, Class<?> structure,
+        Map<String, ArrayList<Attribute>> tablesToSchema,
+        Map<String, Attribute> classAttributes,
+        String simpleName) {
+
+        if (null != parentName) {
+            storeAttribute(tablesToSchema, simpleName, parentName + "Id", "Integer");
         }
+
+        Field[] declaredFields;
+        ArrayList<String> fieldNames;
+        ArrayList<Class<?>> genericClasses;
+        ArrayList<String> fieldTypeNames;
+
         for (var entry : classAttributes.entrySet()) {
             String[] nameArr = entry.getKey().split("\\$");
             String name = nameArr[nameArr.length - 1];
@@ -176,24 +187,54 @@ public class Create {
             if (StringUtils.capitalize(name).equals(type)) {
                 List<Class<?>> classes = List.of(structure.getClasses());
                 for (var c : classes) {
-                    createDDL(c, tablesToSchema);
+                    createDDL(simpleName, c, tablesToSchema);
                 }
             } else if (auditFileCollections.contains(type)) {
                 if (null == entry.getValue().getGenericClass()) {
                     continue;
                 }
+                parentName = simpleName;
                 structure = entry.getValue().getGenericClass();
                 List<Class<?>> classes = List.of(structure.getClasses());
-                for (var c : classes) {
-                    createDDL(c, tablesToSchema);
+                if (!classes.isEmpty()) {
+                    for (var c : classes) {
+                        createDDL(simpleName, c, tablesToSchema);
+                    }
                 }
+                declaredFields = structure.getDeclaredFields();
+                fieldNames = getFieldNames(declaredFields);
+                fieldTypeNames = getFieldTypes(declaredFields);
+                genericClasses = getGenericClasses(declaredFields);
+                classAttributes = getClassAttributes(
+                    fieldNames, fieldTypeNames, genericClasses);
+                simpleName = structure.getSimpleName();
+                breakDownFields(parentName, structure, tablesToSchema, classAttributes, simpleName);
             }
-            Attribute attribute = new Attribute(name, type, null);
-            ArrayList<Attribute> dbAttributes = tablesToSchema.getOrDefault(
-                simpleName, new ArrayList<>());
-            dbAttributes.add(attribute);
-            tablesToSchema.put(simpleName, dbAttributes);
+            if (!type.equals("List")) {
+                storeAttribute(tablesToSchema, simpleName, name, type);
+            }
         }
+    }
+
+    private static void storeAttribute(Map<String, ArrayList<Attribute>> tablesToSchema,
+        String simpleName, String name, String type) {
+        Attribute attribute = new Attribute(name, type, null);
+        ArrayList<Attribute> dbAttributes = tablesToSchema.getOrDefault(
+            simpleName, new ArrayList<>());
+        if (!dbAttributes.contains(attribute)) {
+            dbAttributes.add(attribute);
+        }
+        tablesToSchema.put(simpleName, dbAttributes);
+    }
+
+    private static Map<String, Attribute> getClassAttributes(ArrayList<String> fieldNames,
+        ArrayList<String> fieldTypeNames, ArrayList<Class<?>> genericClasses) {
+        Map<String, Attribute> classAttributes = new HashMap<>();
+        for (int i = 0; i < fieldNames.size(); i++) {
+            classAttributes.put(fieldNames.get(i),
+                new Attribute(fieldNames.get(i), fieldTypeNames.get(i), genericClasses.get(i)));
+        }
+        return classAttributes;
     }
 
     public List<String> createStatement(Map<String, ArrayList<Attribute>> tableToSchema) {
@@ -210,6 +251,7 @@ public class Create {
                     .append(",");
             }
             String stmt = createStatement.substring(0, createStatement.length() - 1);
+            stmt += ");";
             createStatementList.add(stmt);
         }
         return createStatementList;

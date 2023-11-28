@@ -1,5 +1,7 @@
 package com.r.bazaar.entity.internal;
 
+import java.util.Objects;
+
 public class Attribute {
 
     private String name;
@@ -34,5 +36,23 @@ public class Attribute {
 
     public void setGenericClass(Class<?> genericClass) {
         this.genericClass = genericClass;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Attribute attribute = (Attribute) o;
+        return Objects.equals(name, attribute.name) && Objects.equals(typeName,
+            attribute.typeName) && Objects.equals(genericClass, attribute.genericClass);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, typeName, genericClass);
     }
 }
