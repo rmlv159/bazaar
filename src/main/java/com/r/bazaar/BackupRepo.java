@@ -35,6 +35,7 @@ public class BackupRepo {
 
     @Qualifier("dao")
     private DAO dao;
+    private static final List<String> ID_FIELDS = List.of("customer_id", "backup_id", "company_code");
 
     public BackupRepo(DAO dao, SystemSpecifics systemSpecifics) {
         //TODO move this away from constructor and call externally
@@ -137,7 +138,7 @@ public class BackupRepo {
             .filter(Objects::nonNull)
             .collect(Collectors.toCollection(ArrayList::new));
 
-        addGLFieldsToBeDerivedLater(filteredGenericFieldNames);
+        addIdFields(filteredGenericFieldNames);
 
         List<Integer> fieldIndexes = new ArrayList<>();
         for (int i = 0; i < data.size(); i++) {
@@ -158,10 +159,8 @@ public class BackupRepo {
     }
 
 
-    private void addGLFieldsToBeDerivedLater(ArrayList<String> fields) {
-        fields.add("customer_id");
-        fields.add("backup_id");
-        fields.add("company_code");
+    private void addIdFields(ArrayList<String> fields) {
+        fields.addAll(ID_FIELDS);
     }
 
     private void addGLValuesToBeDerivedLater(ArrayList<String> data) {
@@ -172,5 +171,9 @@ public class BackupRepo {
 
     public IntelliSyncConfig getIntelliSyncConfig(int clientId) {
         return clientCache.get(clientId).getIntelliSyncConfig(); //TODO make dynamic
+    }
+
+    public static List<String> getIdFields() {
+        return ID_FIELDS;
     }
 }

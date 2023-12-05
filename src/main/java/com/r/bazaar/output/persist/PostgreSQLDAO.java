@@ -196,5 +196,9 @@ public class PostgreSQLDAO implements DAO {
         }
         return tableName;
     }
+
+    public String getConnectionString() {
+        return connectionString;
+    }
 }
 
