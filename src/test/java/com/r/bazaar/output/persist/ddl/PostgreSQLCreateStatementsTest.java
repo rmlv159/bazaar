@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class PostgreSQLCreateStatementsTest {
@@ -60,6 +61,7 @@ class PostgreSQLCreateStatementsTest {
         }
     }
 
+    @Disabled
     @Test
     void createTables() {
         PostgreSQLCreateStatements createStatements = new PostgreSQLCreateStatements(
@@ -73,6 +75,7 @@ class PostgreSQLCreateStatementsTest {
             "CREATE SCHEMA IF NOT EXISTS " + result.getSchema() + ";" + result.getFullStatement());
     }
 
+    @Disabled
     @Test
     void deleteTables() {
         PostgreSQLCreateStatements createStatements = new PostgreSQLCreateStatements(
@@ -81,9 +84,12 @@ class PostgreSQLCreateStatementsTest {
         PostgreSQLCreateStatements.Result result = createStatements.run(AuditFile.class,
             tablesToSchema);
         PostgreSQLDAO postgreSQLDAO = new PostgreSQLDAO();
+        String dangerousStatement =
+//            "DROP SCHEMA IF EXISTS " + result.getSchema() + " CASCADE;" + //FIXME only comment this in if you want to lose all data
+            "";
         createStatements.executeStatements(
             postgreSQLDAO.getConnectionString(),
-            "DROP SCHEMA IF EXISTS " + result.getSchema() + " CASCADE;");
+            dangerousStatement);
     }
 
     @Test
