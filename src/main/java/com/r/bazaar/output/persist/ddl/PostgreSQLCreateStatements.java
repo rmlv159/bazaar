@@ -22,7 +22,8 @@ public class PostgreSQLCreateStatements {
 
     private static final Logger logger = LogManager.getLogger();
     private static final List<String> AUDIT_FILE_COLLECTIONS = List.of("List", "ArrayList");
-    private static final List<String> COMMON_SUB_ITEMS = List.of("Line", "Settlement", "Supplier");
+    private static final List<String> COMMON_CLASHING_SUB_STRUCTS = List.of("Line", "Settlement",
+        "Supplier");
     private static final List<String> JAKARTA_PARSED_TYPICAL_TYPES = List.of("String", "BigDecimal",
         "BigInteger", "Integer", "int", "long", "XMLGregorianCalendar");
     private static final List<String> JAVA_ADDED_FIELD_TYPES = List.of("byte", "boolean",
@@ -79,10 +80,85 @@ public class PostgreSQLCreateStatements {
         safTSchema = "saf_t_" + split[split.length - 1];
         recursiveEntityIterationForTables(null, structure, tablesToSchema);
         List<String> statements = createStatement(tablesToSchema);
-        result.setSeparateStatements(statements.stream().collect(Collectors.toSet()));
+        result.setSeparateStatements(new HashSet<>(statements));
         result.setFullStatement(String.join("", statements));
         result.setSchema(safTSchema);
         return result;
+    }
+
+    private void recursiveEntityIterationForTables(String parentName,
+        Class<?> structure,
+        Map<String, ArrayList<Attribute>> tablesToSchema) {
+
+        String simpleName = structure.getSimpleName();
+        if (COMMON_CLASHING_SUB_STRUCTS.contains(simpleName)) {
+            simpleName = parentName + simpleName;
+        }
+
+        List<Field> declaredFields = Arrays.stream(structure.getDeclaredFields())
+            .collect(Collectors.toCollection(ArrayList::new));
+        addInheritedFields(declaredFields, structure);
+
+        breakDownFields(parentName, structure, tablesToSchema, declaredFields, simpleName);
+    }
+
+    private void breakDownFields(String parentName,
+        Class<?> structure,
+        Map<String, ArrayList<Attribute>> tablesToSchema,
+        List<Field> declaredFields,
+        String simpleName) {
+
+        Map<String, Attribute> attributes = getClassAttributes(getFieldNames(declaredFields),
+            getFieldTypes(declaredFields),
+            getFieldTypeNames(declaredFields),
+            getGenericClasses(declaredFields));
+
+        addIdFields(parentName, tablesToSchema, simpleName);
+
+        for (var attributeEntry : attributes.entrySet()) {
+            String[] nameArr = attributeEntry.getKey().split("\\$");
+            String name = nameArr[nameArr.length - 1];
+            String[] typeNameArr = attributeEntry.getValue().getTypeName().split("\\$");
+            String typeName = stripType(typeNameArr[typeNameArr.length - 1]);
+            Class<?> type = attributeEntry.getValue().getType();
+            if (isCustomType(name, typeName)) {
+                try {
+//                    Class<?> innerClass = Class.forName(
+//                        derivePackageName(structure.getName()) + "$" + typeName);
+                    recursiveEntityIterationForTables(null, type, tablesToSchema);
+                } catch (Exception e) {
+                    logger.debug("Can't derive");
+                }
+                List<Class<?>> classes = List.of(structure.getClasses());
+                for (var c : classes) {
+                    recursiveEntityIterationForTables(simpleName, c, tablesToSchema);
+                }
+            } else if (AUDIT_FILE_COLLECTIONS.contains(typeName)) {
+                if (null == attributeEntry.getValue().getGenericClass()) {
+                    continue;
+                }
+                parentName = simpleName;
+                structure = attributeEntry.getValue().getGenericClass();
+                List<Class<?>> classes = List.of(structure.getClasses());
+                if (!classes.isEmpty()) {
+                    for (var c : classes) {
+                        recursiveEntityIterationForTables(simpleName, c, tablesToSchema);
+                    }
+                }
+                declaredFields = Arrays.stream(structure.getDeclaredFields())
+                    .collect(Collectors.toCollection(ArrayList::new));
+
+                simpleName = structure.getSimpleName();
+                if (COMMON_CLASHING_SUB_STRUCTS.contains(simpleName)) {
+                    simpleName = parentName + simpleName;
+                }
+                breakDownFields(parentName, structure, tablesToSchema, declaredFields, simpleName);
+            }
+            if (!typeName.equals("List")
+                && !name.equals("0")) { //this$0 is hidden reference of inner class to outer
+                storeAttribute(tablesToSchema, simpleName, name, typeName, String.class);
+            }
+        }
     }
 
     public void executeStatements(String connectionString, String statement) {
@@ -98,12 +174,12 @@ public class PostgreSQLCreateStatements {
         }
     }
 
-    public String derivePackageName(String name) {
+    protected String derivePackageName(String name) {
         String[] split = name.split("\\.");
         return name.replace("." + split[split.length - 1], "");
     }
 
-    public ArrayList<String> getFieldNames(List<Field> fields) {
+    private ArrayList<String> getFieldNames(List<Field> fields) {
         ArrayList<String> fieldNames = new ArrayList<>();
         for (Field field : fields) {
             fieldNames.add(field.getName());
@@ -111,7 +187,7 @@ public class PostgreSQLCreateStatements {
         return fieldNames;
     }
 
-    public ArrayList<String> getFieldTypes(List<Field> fields) {
+    private ArrayList<String> getFieldTypeNames(List<Field> fields) {
         ArrayList<String> fieldNames = new ArrayList<>();
         for (Field field : fields) {
             fieldNames.add(field.getType().getName());
@@ -119,7 +195,12 @@ public class PostgreSQLCreateStatements {
         return fieldNames;
     }
 
-    public ArrayList<Class<?>> getGenericClasses(List<Field> fields) {
+    private ArrayList<Class<?>> getFieldTypes(List<Field> fields) {
+        return fields.stream().map(Field::getType)
+            .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private ArrayList<Class<?>> getGenericClasses(List<Field> fields) {
         ArrayList<Class<?>> fieldNames = new ArrayList<>();
         for (Field field : fields) {
             Type type = field.getGenericType();
@@ -139,103 +220,28 @@ public class PostgreSQLCreateStatements {
         return fieldNames;
     }
 
-    private void recursiveEntityIterationForTables(String parentName, Class<?> structure,
-        Map<String, ArrayList<Attribute>> tablesToSchema) {
-        String simpleName = structure.getSimpleName();
-        if (COMMON_SUB_ITEMS.contains(simpleName)) {
-            simpleName = parentName + simpleName;
-        }
-
-        List<Field> declaredFields = Arrays.stream(structure.getDeclaredFields())
-            .collect(Collectors.toCollection(ArrayList::new));
-        addInheritedFields(declaredFields, structure);
-        ArrayList<String> fieldNames = getFieldNames(declaredFields);
-        ArrayList<String> fieldTypeNames = getFieldTypes(declaredFields);
-        ArrayList<Class<?>> genericClasses = getGenericClasses(declaredFields);
-
-        Map<String, Attribute> classAttributes = getClassAttributes(
-            fieldNames, fieldTypeNames, genericClasses);
-        breakDownFields(parentName, structure, tablesToSchema, classAttributes, simpleName);
-    }
-
     private static void addInheritedFields(List<Field> declaredFields, Class<?> structure) {
         Class<?> superclass = structure.getSuperclass();
         if (Object.class == superclass) {
             return;
         }
-        addInheritedFields(declaredFields, superclass);
         declaredFields.addAll(Arrays.stream(superclass.getDeclaredFields())
             .collect(Collectors.toCollection(ArrayList::new)));
+        addInheritedFields(declaredFields, superclass);
     }
 
-    private void breakDownFields(String parentName, Class<?> structure,
-        Map<String, ArrayList<Attribute>> tablesToSchema,
-        Map<String, Attribute> classAttributes,
+    private void addIdFields(String parentName, Map<String, ArrayList<Attribute>> tablesToSchema,
         String simpleName) {
-
         if (null != parentName) {
             for (String i : idFields) {
-                storeAttribute(tablesToSchema, simpleName, i, "String");
+                storeAttribute(tablesToSchema, simpleName, i, "String", String.class);
             }
-            storeAttribute(tablesToSchema, simpleName, parentName + "_id", "Integer");
-        }
-
-        List<Field> declaredFields;
-        ArrayList<String> fieldNames;
-        ArrayList<Class<?>> genericClasses;
-        ArrayList<String> fieldTypeNames;
-
-        for (var entry : classAttributes.entrySet()) {
-            String[] nameArr = entry.getKey().split("\\$");
-            String name = nameArr[nameArr.length - 1];
-            String[] typeArr = entry.getValue().getTypeName().split("\\$");
-            String type = stripType(typeArr[typeArr.length - 1]);
-//            String innerClassName = StringUtils.capitalize(name);
-            if (isType(name, type)) {
-                Class<?> aClass = null;
-                try {
-                    aClass = Class.forName(
-                        derivePackageName(structure.getName()) + "." + type);
-                    recursiveEntityIterationForTables(null, aClass, tablesToSchema);
-                } catch (ClassNotFoundException e) {
-                    logger.debug("Probably an inner class");
-//                    throw new RuntimeException(e);
-                }
-                List<Class<?>> classes = List.of(structure.getClasses());
-                for (var c : classes) {
-                    recursiveEntityIterationForTables(simpleName, c, tablesToSchema);
-                }
-            } else if (AUDIT_FILE_COLLECTIONS.contains(type)) {
-                if (null == entry.getValue().getGenericClass()) {
-                    continue;
-                }
-                parentName = simpleName;
-                structure = entry.getValue().getGenericClass();
-                List<Class<?>> classes = List.of(structure.getClasses());
-                if (!classes.isEmpty()) {
-                    for (var c : classes) {
-                        recursiveEntityIterationForTables(simpleName, c, tablesToSchema);
-                    }
-                }
-                declaredFields = Arrays.stream(structure.getDeclaredFields()).toList();
-                fieldNames = getFieldNames(declaredFields);
-                fieldTypeNames = getFieldTypes(declaredFields);
-                genericClasses = getGenericClasses(declaredFields);
-                classAttributes = getClassAttributes(
-                    fieldNames, fieldTypeNames, genericClasses);
-                simpleName = structure.getSimpleName();
-                if (COMMON_SUB_ITEMS.contains(simpleName)) {
-                    simpleName = parentName + simpleName;
-                }
-                breakDownFields(parentName, structure, tablesToSchema, classAttributes, simpleName);
-            }
-            if (!type.equals("List")) {
-                storeAttribute(tablesToSchema, simpleName, name, type);
-            }
+            storeAttribute(tablesToSchema, simpleName, parentName + "_id", "Integer",
+                Integer.class);
         }
     }
 
-    protected boolean isType(String name, String type) {
+    protected boolean isCustomType(String name, String type) {
 //        if (StringUtils.capitalize(name).equals(type) //TODO maybe not needed
 //            || "uomTable".equals(name)) {
 //            return true;
@@ -270,11 +276,11 @@ public class PostgreSQLCreateStatements {
 //    }
 
     private static void storeAttribute(Map<String, ArrayList<Attribute>> tablesToSchema,
-        String simpleName, String name, String type) {
+        String simpleName, String name, String typeName, Class<?> type) {
         if (PSQL_SENSITIVE_NAMES.contains(name.toLowerCase())) {
             name += "_";
         }
-        Attribute attribute = new Attribute(name, type, null);
+        Attribute attribute = new Attribute(name, type, typeName, null);
         ArrayList<Attribute> dbAttributes = tablesToSchema.getOrDefault(
             simpleName, new ArrayList<>());
         if (!dbAttributes.contains(attribute)) {
@@ -284,11 +290,13 @@ public class PostgreSQLCreateStatements {
     }
 
     private static Map<String, Attribute> getClassAttributes(ArrayList<String> fieldNames,
-        ArrayList<String> fieldTypeNames, ArrayList<Class<?>> genericClasses) {
+        ArrayList<Class<?>> fieldTypes, ArrayList<String> fieldTypeNames,
+        ArrayList<Class<?>> genericClasses) {
         Map<String, Attribute> classAttributes = new HashMap<>();
         for (int i = 0; i < fieldNames.size(); i++) {
             classAttributes.put(fieldNames.get(i),
-                new Attribute(fieldNames.get(i), fieldTypeNames.get(i), genericClasses.get(i)));
+                new Attribute(fieldNames.get(i), fieldTypes.get(i), fieldTypeNames.get(i),
+                    genericClasses.get(i)));
         }
         return classAttributes;
     }

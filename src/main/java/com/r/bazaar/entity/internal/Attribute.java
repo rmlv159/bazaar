@@ -5,11 +5,13 @@ import java.util.Objects;
 public class Attribute {
 
     private String name;
+    private final Class<?> type;
     private String typeName;
     private Class<?> genericClass;
 
-    public Attribute(String name, String typeName, Class<?> genericClass) {
+    public Attribute(String name, Class<?> type, String typeName, Class<?> genericClass) {
         this.name = name;
+        this.type = type;
         this.typeName = typeName;
         this.genericClass = genericClass;
     }
@@ -28,6 +30,10 @@ public class Attribute {
 
     public void setTypeName(String typeName) {
         this.typeName = typeName;
+    }
+
+    public Class<?> getType() {
+        return type;
     }
 
     public Class<?> getGenericClass() {
@@ -54,5 +60,10 @@ public class Attribute {
     @Override
     public int hashCode() {
         return Objects.hash(name, typeName, genericClass);
+    }
+
+    @Override
+    public String toString() {
+        return name + ": " + typeName;
     }
 }
