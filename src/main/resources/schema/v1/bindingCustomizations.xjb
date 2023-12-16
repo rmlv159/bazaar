@@ -1,0 +1,36 @@
+<!--TODO remove if this turns out to be a dead end, see OneNote about story about highsource and jsonschema not very popular-->
+
+<jxb:bindings version="1.0"
+               xmlns:jxb="http://java.sun.com/xml/ns/jaxb"
+               xmlns:xs="http://www.w3.org/2001/XMLSchema"
+               xmlns:hj="http://hyperjaxb3.jvnet.org/ejb/schemas/customizations">
+  <jxb:bindings schemaLocation="Danish_SAF-T_Financial_Schema_v_1_0.xsd" node="/xs:schema">
+    <hj:persistence>
+      <jxb:bindings node="//xs:element/xs:complexType/xs:sequence/xs:element[@name='Header']">
+
+        <hj:basic>
+          <hj:column name="{@name}" />
+        </hj:basic>
+      </jxb:bindings>
+
+      <!--
+      <jxb:class>
+        <jxb:javadoc>
+          <![CDATA[First line of documentation for a <b>USAddress</b>.]]>
+        </jxb:javadoc>
+      </jxb:class>
+      -->
+
+      <!--
+      <jxb:bindings node=".//xs:element[@name='name']">
+        <jxb:property name="toName"/>
+      </jxb:bindings>
+
+      <jxb:bindings node=".//xs:element[@name='zip']">
+        <jxb:property name="zipCode"/>
+      </jxb:bindings>
+      -->
+
+    </hj:persistence>
+  </jxb:bindings>
+</jxb:bindings>

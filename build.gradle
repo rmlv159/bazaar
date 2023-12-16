@@ -40,6 +40,14 @@ dependencies {
 	implementation group: 'org.glassfish.jaxb',			name: 'jaxb-runtime', 					version: '4.0.4'
 	implementation group: 'jakarta.xml.bind', 			name: 'jakarta.xml.bind-api', 			version: '4.0.0'
 	implementation group: 'jakarta.activation', 		name: 'jakarta.activation-api', 		version: '2.1.2'
+//	implementation group: 'org.patrodyne.jvnet', name: 'hisrc-higherjaxb-maven-plugin-core', version: '2.1.1'
+	implementation group: 'org.jvnet.hyperjaxb3', name: 'hyperjaxb3-ejb-runtime', version: '0.6.2', {
+		exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
+		exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
+	}
+	implementation group: 'com.github.erosb', name: 'everit-json-schema', version: '1.14.3'
+
+
 
 	jaxb 'com.sun.xml.bind:jaxb-xjc:4.0.4'
 	jaxb 'javax.xml.bind:jaxb-api:2.3.1'
@@ -59,5 +67,6 @@ task xjc(type: JavaExec) {
 	args = [
 			'-d', 'src/main/java',
 			'-p', 'com.r.bazaar.entity.schema.v1', //TODO make more dynamic
-			'src/main/resources/schema/v1/Danish_SAF-T_Financial_Schema_v_1_0.xsd']
+			'src/main/resources/schema/v1/Danish_SAF-T_Financial_Schema_v_1_0.xsd',
+			'-b', 'src/main/resources/schema/v1/bindingCustomizations.xjb']
 }

@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
@@ -78,7 +79,7 @@ public class PostgreSQLCreateStatements {
     public Result run(Class<?> structure, Map<String, ArrayList<Attribute>> tablesToSchema) {
         String[] split = structure.getPackageName().split("\\.");
         safTSchema = "saf_t_" + split[split.length - 1];
-        recursiveEntityIterationForTables(null, structure, tablesToSchema);
+        parseStructuresForRelationalDB(null, structure, tablesToSchema, false);
         List<String> statements = createStatement(tablesToSchema);
         result.setSeparateStatements(new HashSet<>(statements));
         result.setFullStatement(String.join("", statements));
@@ -86,9 +87,10 @@ public class PostgreSQLCreateStatements {
         return result;
     }
 
-    private void recursiveEntityIterationForTables(String parentName,
+    private void parseStructuresForRelationalDB(String parentName,
         Class<?> structure,
-        Map<String, ArrayList<Attribute>> tablesToSchema) {
+        Map<String, ArrayList<Attribute>> tablesToSchema,
+        boolean isParent1To1) {
 
         String simpleName = structure.getSimpleName();
         if (COMMON_CLASHING_SUB_STRUCTS.contains(simpleName)) {
@@ -98,6 +100,7 @@ public class PostgreSQLCreateStatements {
         List<Field> declaredFields = Arrays.stream(structure.getDeclaredFields())
             .collect(Collectors.toCollection(ArrayList::new));
         addInheritedFields(declaredFields, structure);
+        addIdFields(parentName, tablesToSchema, simpleName, isParent1To1);
 
         breakDownFields(parentName, structure, tablesToSchema, declaredFields, simpleName);
     }
@@ -113,52 +116,67 @@ public class PostgreSQLCreateStatements {
             getFieldTypeNames(declaredFields),
             getGenericClasses(declaredFields));
 
-        addIdFields(parentName, tablesToSchema, simpleName);
-
         for (var attributeEntry : attributes.entrySet()) {
-            String[] nameArr = attributeEntry.getKey().split("\\$");
-            String name = nameArr[nameArr.length - 1];
+            String[] fieldNameArr = attributeEntry.getKey().split("\\$");
+            String fieldName = fieldNameArr[fieldNameArr.length - 1];
             String[] typeNameArr = attributeEntry.getValue().getTypeName().split("\\$");
             String typeName = stripType(typeNameArr[typeNameArr.length - 1]);
             Class<?> type = attributeEntry.getValue().getType();
-            if (isCustomType(name, typeName)) {
-                try {
-//                    Class<?> innerClass = Class.forName(
-//                        derivePackageName(structure.getName()) + "$" + typeName);
-                    recursiveEntityIterationForTables(null, type, tablesToSchema);
-                } catch (Exception e) {
-                    logger.debug("Can't derive");
-                }
-                List<Class<?>> classes = List.of(structure.getClasses());
-                for (var c : classes) {
-                    recursiveEntityIterationForTables(simpleName, c, tablesToSchema);
-                }
-            } else if (AUDIT_FILE_COLLECTIONS.contains(typeName)) {
+            if (isCustomType(typeName)) {
+                process1To1Relation(structure, tablesToSchema, simpleName, parentName, fieldName,
+                    typeName, type);
+                continue;
+            } else if (isCustomType(typeName) || AUDIT_FILE_COLLECTIONS.contains(typeName)) {
                 if (null == attributeEntry.getValue().getGenericClass()) {
                     continue;
                 }
-                parentName = simpleName;
-                structure = attributeEntry.getValue().getGenericClass();
-                List<Class<?>> classes = List.of(structure.getClasses());
-                if (!classes.isEmpty()) {
-                    for (var c : classes) {
-                        recursiveEntityIterationForTables(simpleName, c, tablesToSchema);
-                    }
-                }
-                declaredFields = Arrays.stream(structure.getDeclaredFields())
-                    .collect(Collectors.toCollection(ArrayList::new));
-
-                simpleName = structure.getSimpleName();
-                if (COMMON_CLASHING_SUB_STRUCTS.contains(simpleName)) {
-                    simpleName = parentName + simpleName;
-                }
-                breakDownFields(parentName, structure, tablesToSchema, declaredFields, simpleName);
+                structure = process1toManyRelation(tablesToSchema, simpleName, attributeEntry);
             }
             if (!typeName.equals("List")
-                && !name.equals("0")) { //this$0 is hidden reference of inner class to outer
-                storeAttribute(tablesToSchema, simpleName, name, typeName, String.class);
+                && !fieldName.equals("0")) { //this$0 is hidden reference of inner class to outer
+                storeAttribute(tablesToSchema, simpleName, fieldName, typeName, type);
             }
         }
+    }
+
+    private void process1To1Relation(
+        Class<?> structure,
+        Map<String, ArrayList<Attribute>> tablesToSchema,
+        String simpleName,
+        String parentName,
+        String name,
+        String typeName,
+        Class<?> type) {
+        List<Class<?>> classes = List.of(structure.getClasses());
+        for (var c : classes) {
+            parseStructuresForRelationalDB(simpleName, c, tablesToSchema, false);
+        }
+        if ("0".equals(name)) {
+            return;
+        }
+        if (List.of("1", "2", "3", "4", "5", "6", "7", "8", "9")
+            .contains(typeName.substring(0, 1))) {
+            //for field that Reflection prefixes with numbers
+            typeName = typeName.substring(1);
+        }
+        storeAttribute(tablesToSchema, simpleName, name + "_" + typeName + "_1to1_id",
+            "int", Integer.class);
+        String simpleName1to1 = type.getSimpleName();
+        if (COMMON_CLASHING_SUB_STRUCTS.contains(simpleName1to1)) {
+            simpleName1to1 = parentName + simpleName1to1;
+        }
+        storeAttribute(tablesToSchema, simpleName1to1, "id", "int",
+            Integer.class);
+        parseStructuresForRelationalDB(parentName, type, tablesToSchema, true);
+    }
+
+    private Class<?> process1toManyRelation(Map<String, ArrayList<Attribute>> tablesToSchema,
+        String simpleName,
+        Entry<String, Attribute> attributeEntry) {
+        Class<?> structure;
+        structure = attributeEntry.getValue().getGenericClass();
+        parseStructuresForRelationalDB(simpleName, structure, tablesToSchema, false);
+        return structure;
     }
 
     public void executeStatements(String connectionString, String statement) {
@@ -231,49 +249,28 @@ public class PostgreSQLCreateStatements {
     }
 
     private void addIdFields(String parentName, Map<String, ArrayList<Attribute>> tablesToSchema,
-        String simpleName) {
-        if (null != parentName) {
-            for (String i : idFields) {
-                storeAttribute(tablesToSchema, simpleName, i, "String", String.class);
-            }
+        String simpleName, boolean isParent1To1) {
+        for (String idField : idFields) {
+            storeAttribute(tablesToSchema, simpleName, "meta_" + idField, "String", String.class);
+        }
+        if (null != parentName && !isParent1To1) {
             storeAttribute(tablesToSchema, simpleName, parentName + "_id", "Integer",
                 Integer.class);
         }
     }
 
-    protected boolean isCustomType(String name, String type) {
-//        if (StringUtils.capitalize(name).equals(type) //TODO maybe not needed
-//            || "uomTable".equals(name)) {
-//            return true;
-//        } else
+    protected static boolean isCustomType(String type) {
         if (!JAKARTA_PARSED_TYPICAL_TYPES.contains(type)
             && !AUDIT_FILE_COLLECTIONS.contains(type)) {
+            //for readability
+            //noinspection RedundantIfStatement
             if (JAVA_ADDED_FIELD_TYPES.contains(type)) {
                 return false;
             }
-//            logger.debug("Add to retainedStructuresForLaterParsing");
-//            retainedStructuresForLaterParsing.add(type);
             return true;
         }
         return false;
     }
-
-    //TODO remove when sure that other recursive procesure is correct
-//    void parseRetainedTypes(String schemaPackageName,
-//        Map<String, ArrayList<Attribute>> tablesToSchema) {
-//        Iterator<String> iterator = retainedStructuresForLaterParsing.iterator();
-//        while (iterator.hasNext()) {
-//            try {
-//                String struct = iterator.next();
-//                logger.info("parseRetainedTypes: {}", struct);
-//                System.out.println(schemaPackageName + "." + struct);
-//                Class<?> aClass = Class.forName(schemaPackageName + "." + struct);
-//                createDDL(null, aClass, tablesToSchema);
-//            } catch (ClassNotFoundException e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
-//    }
 
     private static void storeAttribute(Map<String, ArrayList<Attribute>> tablesToSchema,
         String simpleName, String name, String typeName, Class<?> type) {
@@ -323,9 +320,11 @@ public class PostgreSQLCreateStatements {
 
     private String convertToSql(String type) {
         if ("BigDecimal".equals(type)) {
-            return "numeric";
+            return "decimal";
         } else if ("int".equals(type)) {
             return "int";
+        } else if ("BigInteger".equals(type)) {
+            return "bigint";
         } else if ("XMLGregorianCalendar".equals(type)) {
             return "date";
         }

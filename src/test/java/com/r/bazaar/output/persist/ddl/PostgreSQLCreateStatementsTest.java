@@ -5,12 +5,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.r.bazaar.BackupRepo;
 import com.r.bazaar.entity.internal.Attribute;
 import com.r.bazaar.entity.schema.v1.AuditFile;
-import com.r.bazaar.entity.schema.v1.ObjectFactory;
 import com.r.bazaar.output.persist.PostgreSQLDAO;
-import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,9 +18,9 @@ class PostgreSQLCreateStatementsTest {
 
     @Test
     void split() {
-        PostgreSQLCreateStatements create = new PostgreSQLCreateStatements(
+        PostgreSQLCreateStatements creator = new PostgreSQLCreateStatements(
             BackupRepo.getIdFields());
-        System.out.println(create.stripType("java.math.BigDecimal"));
+        System.out.println(creator.stripType("java.math.BigDecimal"));
     }
 
     @Test
@@ -41,7 +38,7 @@ class PostgreSQLCreateStatementsTest {
                 String colName = cols[i].split(" ")[0];
                 if (checkList.contains(colName.toLowerCase())) {
                     System.out.println("Failed colName=" + colName);
-                    fail();
+                    fail("Failed colName=" + colName);
                 }
                 checkList.add(colName.toLowerCase());
             }
@@ -61,7 +58,7 @@ class PostgreSQLCreateStatementsTest {
 
         class SomeAdjacentStruct {
 
-            protected String adjacency;
+            protected String adjacencyData;
         }
 
         class Struct1 extends SuperStruct {
@@ -69,13 +66,18 @@ class PostgreSQLCreateStatementsTest {
             protected String field1;
             protected BigDecimal field2;
             protected List<Struct2> structs;
-            protected Struct2 aStruct;
+            protected Struct3 aStruct;
 
             static class Struct2 {
 
                 protected String field3;
                 protected BigDecimal field4;
-                protected SomeAdjacentStruct nabor;
+                protected SomeAdjacentStruct nabour;
+            }
+
+            static class Struct3 {
+
+                protected String field5;
             }
         }
 
@@ -83,11 +85,13 @@ class PostgreSQLCreateStatementsTest {
             tablesToSchema);
         String[] splitPackage = this.getClass().getPackageName().split("\\.");
         String expected = "CREATE TABLE saf_t_" + splitPackage[splitPackage.length - 1]
-            + ".SomeAdjacentStruct (customer_id varchar,backup_id varchar,company_code varchar,Struct2_id varchar,adjacency varchar);"
+            + ".SomeAdjacentStruct (id int,meta_customer_id varchar,meta_backup_id varchar,meta_company_code varchar,adjacencyData varchar);"
             + "CREATE TABLE saf_t_" + splitPackage[splitPackage.length - 1]
-            + ".Struct1 (aStruct varchar,field1 varchar,field2 numeric,superField varchar);"
+            + ".Struct1 (meta_customer_id varchar,meta_backup_id varchar,meta_company_code varchar,aStruct_Struct3_1to1_id int,field1 varchar,field2 decimal,superField varchar);"
             + "CREATE TABLE saf_t_" + splitPackage[splitPackage.length - 1]
-            + ".Struct2 (customer_id varchar,backup_id varchar,company_code varchar,Struct1_id varchar,field3 varchar,field4 numeric);";
+            + ".Struct2 (meta_customer_id varchar,meta_backup_id varchar,meta_company_code varchar,Struct1_id varchar,nabour_SomeAdjacentStruct_1to1_id int,field3 varchar,field4 decimal);"
+            + "CREATE TABLE saf_t_" + splitPackage[splitPackage.length - 1]
+            + ".Struct3 (id int,meta_customer_id varchar,meta_backup_id varchar,meta_company_code varchar,field5 varchar);";
         assertEquals(expected, result.getFullStatement());
     }
 
@@ -121,16 +125,14 @@ class PostgreSQLCreateStatementsTest {
 
     @Test
     void findsTypeTest() {
-        PostgreSQLCreateStatements create = new PostgreSQLCreateStatements(
-            BackupRepo.getIdFields());
         assertAll(
-            () -> assertTrue(create.isCustomType("debitAmount", "AmountStructure"),
+            () -> assertTrue(PostgreSQLCreateStatements.isCustomType("AmountStructure"),
                 "AmountStructure"),
-            () -> assertFalse(create.isCustomType("description", "String"), "String"),
+            () -> assertFalse(PostgreSQLCreateStatements.isCustomType("String"), "String"),
             () -> assertTrue(
-                create.isCustomType("contactHeaderStructure", "ContactHeaderStructure"),
+                PostgreSQLCreateStatements.isCustomType("ContactHeaderStructure"),
                 "ContactHeaderStructure"),
-            () -> assertTrue(create.isCustomType("uomTable", "UOMTable"), "UOMTable"));
+            () -> assertTrue(PostgreSQLCreateStatements.isCustomType("UOMTable"), "UOMTable"));
     }
 
     @Test
