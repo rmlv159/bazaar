@@ -5,6 +5,7 @@ import com.r.bazaar.input.Decoder;
 import com.r.bazaar.lib.model.IntelliSyncConfig;
 import com.r.bazaar.entity.model.Field;
 import com.r.bazaar.output.persist.DAO;
+import com.r.bazaar.output.persist.PostgreSQLDAO.Row;
 import com.r.bazaar.output.persist.SystemSpecifics;
 import com.r.bazaar.output.report.Packager;
 import com.r.bazaar.lib.model.Backup;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -55,8 +57,9 @@ public class BackupRepo {
             Integer clientId = entry.getKey();
             Client client = new Client();
             IntelliSyncConfig intelliSyncConfig = new IntelliSyncConfig();
-            List<String> preparedTablesNames = entry.getValue().stream()
+            Set<String> preparedTablesNames = entry.getValue().stream()
                 .map(rawTableName -> {
+                    //TODO RK improve performance and cache single dao calls
                     String companyCode = dao.getCompanyCode(clientId);
                     client.setCompanyCode(companyCode);
                     String systemName = dao.getSystemName(clientId);
@@ -66,9 +69,10 @@ public class BackupRepo {
                     }
                     return "";
                 })
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
             intelliSyncConfig.getRelevantTables().addAll(preparedTablesNames);
-            client.setIntelliSyncConfig(intelliSyncConfig);
+            client.
+                setIntelliSyncConfig(intelliSyncConfig);
             clientCache.put(clientId, client);
         }
     }
@@ -101,63 +105,56 @@ public class BackupRepo {
         schemaCache.put(tableName, schema);
     }
 
-    public void saveRow(int clientId, String tableName, ArrayList<String> data) {
+    public void saveRow(int clientId, String tableNameReceived, ArrayList<String> dataReceived) {
         Client client = clientCache.get(clientId);
-        ArrayList<String> seqTypes = seqTypesCache.get(tableName);
+        ArrayList<String> seqTypes = seqTypesCache.get(tableNameReceived);
         if (null == seqTypes) {
             throw new IllegalArgumentException("Table not present in schema");
         }
         //input validation has already been done
-        String genericTableName = systemSpecifics.lookUpGenericTableName(client, tableName);
-//        if ("gl_entries".equals(genericTableName)) {
-        ArrayList<Field> schema = schemaCache.get(tableName);
-        ArrayList<String> filteredFields = filter(clientId, client.getSystemName(),
-            genericTableName, schema, data);
-        dao.put(genericTableName, filteredFields, data);
+        List<String> genericTableNames = systemSpecifics.lookUpGenericTableNames(client, tableNameReceived);
+        ArrayList<Field> schemaReceived = schemaCache.get(tableNameReceived);
+        Map<String, Submission> filteredFieldsAndTables = filter(clientId, client.getSystemName(),
+            genericTableNames, schemaReceived, dataReceived);
+
+        for (var pair : filteredFieldsAndTables.entrySet()) {
+            dao.put(pair.getKey(), pair.getValue().filteredGenericFieldNames, pair.getValue().data);
 //            packager.run(data);
+        }
     }
 
-    private ArrayList<String> filter(int clientId, String systemName,
-        String tableName, ArrayList<Field> schema, ArrayList<String> data) {
+    protected record Submission(List<String> filteredGenericFieldNames,
+                                List<String> data) {
 
-        Map<String, String> genericFieldsBySystemDefaultFields = dao.getGenericFieldsBySystemDefaultFields(
-            clientId, systemName, tableName);
-        Map<String, String> systemDefaultFieldsByGenericFields = dao.getSystemDefaultFieldsByGenericFields(
-            clientId, systemName, tableName);
-
-        ArrayList<String> defaultSystemFieldNames = schema.stream()
-            .map(Field::getName)
-            .collect(Collectors.toCollection(ArrayList::new));
-        ArrayList<String> filteredDefaultSystemFieldNames = genericFieldsBySystemDefaultFields.values()
-            .stream()
-            .map(systemDefaultFieldsByGenericFields::get)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toCollection(ArrayList::new));
-        ArrayList<String> filteredGenericFieldNames = defaultSystemFieldNames.stream()
-            .map(genericFieldsBySystemDefaultFields::get)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toCollection(ArrayList::new));
-
-        addIdFields(filteredGenericFieldNames);
-
-        List<Integer> fieldIndexes = new ArrayList<>();
-        for (int i = 0; i < data.size(); i++) {
-            if (filteredDefaultSystemFieldNames.contains(defaultSystemFieldNames.get(i))) {
-                fieldIndexes.add(i);
-            }
-        }
-        ArrayList<String> temp = new ArrayList<>();
-        for (int i = 0; i < data.size(); i++) {
-            if (fieldIndexes.contains(i)) {
-                temp.add(data.get(i));
-            }
-        }
-        data.clear();
-        data.addAll(temp);
-        addGLValuesToBeDerivedLater(data);
-        return filteredGenericFieldNames;
+        //TODO instead we need a queue here
     }
 
+    protected Map<String, Submission> filter(int clientId, String systemName,
+        List<String> genericTableNames, ArrayList<Field> schema, ArrayList<String> data) {
+
+        Map<String, Row> systemDefaultFieldsToGenericFields = dao.getSystemDefaultToGeneric(
+            clientId, systemName, genericTableNames);
+        Map<String, String> genericTablesToGenericFields = dao.getGenericTablesToGenericFields(
+            clientId, systemName, genericTableNames);
+        Map<String, String> genericFieldsToSystemDefaultFields = dao.getGenericFieldsToSystemDefaultFields(
+            clientId, systemName, genericTableNames);
+
+        Map<String, Submission> submissions = new HashMap<>();
+        for (Map.Entry<String, String> genericTableEntry : genericTablesToGenericFields.entrySet()) {
+            ArrayList<String> sortedData = new ArrayList<>();
+            List<String> sortedGenericFieldNames = new ArrayList<>();
+            for (String datum : data) {
+                if (genericFieldsToSystemDefaultFields.containsKey(genericTableEntry.getValue())) {
+                    sortedData.add(datum);
+                    sortedGenericFieldNames.add(genericTableEntry.getValue());
+                }
+            }
+            submissions.put(genericTableEntry.getKey(),
+                new Submission(sortedGenericFieldNames, sortedData));
+        }
+        //TODO bad, new objects
+        return submissions;
+    }
 
     private void addIdFields(ArrayList<String> fields) {
         fields.addAll(ID_FIELDS);

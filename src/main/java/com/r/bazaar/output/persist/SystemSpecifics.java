@@ -1,6 +1,7 @@
 package com.r.bazaar.output.persist;
 
 import com.r.bazaar.entity.internal.Client;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +15,8 @@ public class SystemSpecifics {
         this.dao = dao;
     }
 
-    public String lookUpGenericTableName(Client client, String tableName) {
+    public List<String> lookUpGenericTableNames(Client client, String tableName) {
+        //TODO RK improve performance, this needs to be cached per client and system, probably when a new backup is initiated
         String systemName = client.getSystemName();
         String companyCode = client.getCompanyCode();
         if ("NAV18".equals(systemName)) {
@@ -22,8 +24,8 @@ public class SystemSpecifics {
                 .replace(companyCode, "")
                 .replace("$", "")
                 .replace("]", "");
-            String genericTableName = dao.getGenericTableName(defaultSystemTableName);
-            return genericTableName;
+            List<String> genericTableNames = dao.getGenericTableNames(defaultSystemTableName);
+            return genericTableNames;
 //        }
         }
         return null;

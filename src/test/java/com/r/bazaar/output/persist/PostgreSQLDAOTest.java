@@ -3,7 +3,7 @@ package com.r.bazaar.output.persist;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.HashMap;
-import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +16,7 @@ class PostgreSQLDAOTest {
     @BeforeEach
     void setUp() {
         //TODO set up an in-memory database
+        //TODO RK not a real test, remove at some point
         postgreSQLDAO = new PostgreSQLDAO();
     }
 
@@ -25,9 +26,9 @@ class PostgreSQLDAOTest {
 
     @Test
     void getTablesPerCustomer() {
-        HashMap<Integer, List<String>> expected = new HashMap<>() {
+        HashMap<Integer, Set<String>> expected = new HashMap<>() {
             {
-                put(1, List.of("G_L Entry"));
+                put(1, Set.of("G_L Entry"));
             }
         };
         assertEquals(expected, postgreSQLDAO.getTablesPerClient());
@@ -39,5 +40,10 @@ class PostgreSQLDAOTest {
             () -> assertEquals("CRONUS Danmark A_S", postgreSQLDAO.getCompanyCode(1),
                 "Company code extracted correct")
         );
+    }
+
+    @Test
+    void invokeGetTablesPerClient() {
+        postgreSQLDAO.getTablesPerClient();
     }
 }

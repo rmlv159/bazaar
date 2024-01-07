@@ -8,11 +8,12 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
-import com.r.bazaar.entity.model.Field;
+import com.r.bazaar.output.persist.PostgreSQLDAO.Row;
 import com.typesafe.config.Config;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 public class DynamoDBDAO implements DAO {
@@ -72,7 +73,7 @@ public class DynamoDBDAO implements DAO {
     }
 
     @Override
-    public Map<Integer, List<String>> getTablesPerClient() {
+    public Map<Integer, Set<String>> getTablesPerClient() {
         //TODO implement
         return null;
     }
@@ -84,7 +85,7 @@ public class DynamoDBDAO implements DAO {
     }
 
     @Override
-    public void put(String tableName, ArrayList<String> fieldNames, ArrayList<String> data) {
+    public void put(String tableName, List<String> fieldNames, List<String> data) {
         //TODO implement
     }
 
@@ -95,21 +96,29 @@ public class DynamoDBDAO implements DAO {
     }
 
     @Override
-    public Map<String, String> getGenericFieldsBySystemDefaultFields(int clientId, String systemName,
-        String tableName) {
+    public Map<String, String> getGenericTablesToGenericFields(int clientId, String systemName,
+        List<String> tableNames) {
         //TODO impl
         return null;
     }
 
     @Override
-    public Map<String, String> getSystemDefaultFieldsByGenericFields(int clientId,
-        String systemName, String tableName) {
+    public Map<String, Row> getSystemDefaultToGeneric(int clientId, String systemName,
+        List<String> tableNames) {
+        //TODO impl
+        return null;
+    }
+
+    //TODO record Row externalized?
+    @Override
+    public Map<String, String> getGenericFieldsToSystemDefaultFields(int clientId,
+        String systemName, List<String> tableNames) {
         //TODO impl
         return null;
     }
 
     @Override
-    public String getGenericTableName(String defaultSystemTableName) {
+    public List<String> getGenericTableNames(String defaultSystemTableName) {
         //TODO impl
         return null;
     }

@@ -25,6 +25,7 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 //	implementation 'org.springframework.security:spring-security-core'
 //	implementation 'org.springframework.boot:spring-boot-starter-security'
+	testImplementation group: 'org.easymock', name: 'easymock', version: '5.2.0'
 	implementation group: 'io.swagger.core.v3', name: 'swagger-annotations', version: '2.2.3'
 	implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.2'
 	implementation group: 'com.typesafe', name: 'config', version: '1.4.2'
