@@ -1,5 +1,6 @@
 package com.r.bazaar;
 
+import com.r.bazaar.MatchingAlgo.InsertionPreparedMatch;
 import com.r.bazaar.entity.internal.Client;
 import com.r.bazaar.input.Decoder;
 import com.r.bazaar.lib.model.IntelliSyncConfig;
@@ -14,14 +15,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
 
-@Component
+@Repository
 public class BackupRepo {
 
     //TODO implement per customer and eviction
@@ -37,7 +38,12 @@ public class BackupRepo {
 
     @Qualifier("dao")
     private DAO dao;
-    private static final List<String> ID_FIELDS = List.of("customer_id", "backup_id", "company_code");
+
+    @Autowired
+    private MatchingAlgo matchingAlgo;
+
+    private static final List<String> ID_FIELDS = List.of("customer_id", "backup_id",
+        "company_code");
 
     public BackupRepo(DAO dao, SystemSpecifics systemSpecifics) {
         //TODO move this away from constructor and call externally
@@ -46,11 +52,6 @@ public class BackupRepo {
         clientCache = new HashMap<>();
         initConfigCache();
     }
-
-    //TODO dummy for Spring, still needed?
-//    public BackupRepo() {
-//        this(null);
-//    }
 
     private void initConfigCache() {
         for (var entry : dao.getTablesPerClient().entrySet()) {
@@ -70,7 +71,10 @@ public class BackupRepo {
                     return "";
                 })
                 .collect(Collectors.toSet());
-            intelliSyncConfig.getRelevantTables().addAll(preparedTablesNames);
+            //TODO RK revert
+//            intelliSyncConfig.getRelevantTables().addAll(preparedTablesNames);
+            intelliSyncConfig.getRelevantTables().addAll(Set.of("[dbo].[CRONUS Danmark A_S$G_L Entry]"));
+
             client.
                 setIntelliSyncConfig(intelliSyncConfig);
             clientCache.put(clientId, client);
@@ -112,48 +116,16 @@ public class BackupRepo {
             throw new IllegalArgumentException("Table not present in schema");
         }
         //input validation has already been done
-        List<String> genericTableNames = systemSpecifics.lookUpGenericTableNames(client, tableNameReceived);
+        List<String> genericTableNames = systemSpecifics.lookUpGenericTableNames(client,
+            tableNameReceived);
         ArrayList<Field> schemaReceived = schemaCache.get(tableNameReceived);
-        Map<String, Submission> filteredFieldsAndTables = filter(clientId, client.getSystemName(),
-            genericTableNames, schemaReceived, dataReceived);
+        Map<String, InsertionPreparedMatch> insertions = matchingAlgo.filter(clientId, client.getSystemName(),
+            genericTableNames, schemaReceived, dataReceived, tableNameReceived);
 
-        for (var pair : filteredFieldsAndTables.entrySet()) {
+        for (var pair : insertions.entrySet()) {
             dao.put(pair.getKey(), pair.getValue().filteredGenericFieldNames, pair.getValue().data);
 //            packager.run(data);
         }
-    }
-
-    protected record Submission(List<String> filteredGenericFieldNames,
-                                List<String> data) {
-
-        //TODO instead we need a queue here
-    }
-
-    protected Map<String, Submission> filter(int clientId, String systemName,
-        List<String> genericTableNames, ArrayList<Field> schema, ArrayList<String> data) {
-
-        Map<String, Row> systemDefaultFieldsToGenericFields = dao.getSystemDefaultToGeneric(
-            clientId, systemName, genericTableNames);
-        Map<String, String> genericTablesToGenericFields = dao.getGenericTablesToGenericFields(
-            clientId, systemName, genericTableNames);
-        Map<String, String> genericFieldsToSystemDefaultFields = dao.getGenericFieldsToSystemDefaultFields(
-            clientId, systemName, genericTableNames);
-
-        Map<String, Submission> submissions = new HashMap<>();
-        for (Map.Entry<String, String> genericTableEntry : genericTablesToGenericFields.entrySet()) {
-            ArrayList<String> sortedData = new ArrayList<>();
-            List<String> sortedGenericFieldNames = new ArrayList<>();
-            for (String datum : data) {
-                if (genericFieldsToSystemDefaultFields.containsKey(genericTableEntry.getValue())) {
-                    sortedData.add(datum);
-                    sortedGenericFieldNames.add(genericTableEntry.getValue());
-                }
-            }
-            submissions.put(genericTableEntry.getKey(),
-                new Submission(sortedGenericFieldNames, sortedData));
-        }
-        //TODO bad, new objects
-        return submissions;
     }
 
     private void addIdFields(ArrayList<String> fields) {

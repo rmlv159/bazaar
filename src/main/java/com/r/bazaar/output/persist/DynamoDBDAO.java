@@ -8,6 +8,7 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
+import com.r.bazaar.entity.model.Field;
 import com.r.bazaar.output.persist.PostgreSQLDAO.Row;
 import com.typesafe.config.Config;
 import java.util.ArrayList;
@@ -90,14 +91,27 @@ public class DynamoDBDAO implements DAO {
     }
 
     @Override
+    public long putAndGetId(String tableName, List<String> fieldNames, List<String> data) {
+        //TODO implement
+        return 0;
+    }
+
+    @Override
     public String getSystemName(Integer clientId) {
         //TODO implement
         return null;
     }
 
     @Override
-    public Map<String, String> getGenericTablesToGenericFields(int clientId, String systemName,
+    public Map<String, Set<String>> getGenericTablesToGenericFields(int clientId, String systemName,
         List<String> tableNames) {
+        //TODO impl
+        return null;
+    }
+
+    @Override
+    public com.google.common.collect.Table<String, String, String> getSystemSchemaMappingTable(
+        int clientId, String systemName, List<String> tableNames) {
         //TODO impl
         return null;
     }
@@ -119,6 +133,18 @@ public class DynamoDBDAO implements DAO {
 
     @Override
     public List<String> getGenericTableNames(String defaultSystemTableName) {
+        //TODO impl
+        return null;
+    }
+
+    @Override
+    public void fillAllSystemSchemaMapping(
+        final com.google.common.collect.Table<String, String, String> container) {
+        //TODO RK impl
+    }
+
+    @Override
+    public List<Field> getSchema(String genericTableName) {
         //TODO impl
         return null;
     }

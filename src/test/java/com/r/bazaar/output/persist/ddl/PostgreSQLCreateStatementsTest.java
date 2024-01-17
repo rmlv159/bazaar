@@ -6,27 +6,32 @@ import com.r.bazaar.BackupRepo;
 import com.r.bazaar.entity.internal.Attribute;
 import com.r.bazaar.entity.schema.v1.AuditFile;
 import com.r.bazaar.output.persist.PostgreSQLDAO;
+import com.r.bazaar.util.AutowireHelper;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class PostgreSQLCreateStatementsTest {
 
+    private static final Logger logger = LogManager.getLogger();
+
     @Test
     void split() {
         PostgreSQLCreateStatements creator = new PostgreSQLCreateStatements(
-            BackupRepo.getIdFields());
+            BackupRepo.getIdFields(), new AutowireHelper().createChoiceTypes());
         System.out.println(creator.stripType("java.math.BigDecimal"));
     }
 
     @Test
-    void ddlNoDuplicates() {
+    void ddlNoDuplicates() throws Exception {
         PostgreSQLCreateStatements createStatement = new PostgreSQLCreateStatements(
-            BackupRepo.getIdFields());
+            BackupRepo.getIdFields(), new AutowireHelper().createChoiceTypes());
         Map<String, ArrayList<Attribute>> tablesToSchema = new HashMap<>();
         PostgreSQLCreateStatements.Result result = createStatement.run(AuditFile.class,
             tablesToSchema);
@@ -46,9 +51,9 @@ class PostgreSQLCreateStatementsTest {
     }
 
     @Test
-    void ddlFinalStatementCorrect() {
+    void ddlFinalStatementCorrect() throws Exception {
         PostgreSQLCreateStatements createStatement = new PostgreSQLCreateStatements(
-            BackupRepo.getIdFields());
+            BackupRepo.getIdFields(), new AutowireHelper().createChoiceTypes());
         Map<String, ArrayList<Attribute>> tablesToSchema = new HashMap<>();
 
         class SuperStruct {
@@ -95,11 +100,12 @@ class PostgreSQLCreateStatementsTest {
         assertEquals(expected, result.getFullStatement());
     }
 
-    @Disabled
+//    @Disabled
     @Test
-    void createTables() {
+        //TODO RK all of this code should maybe be moved into a separate application?
+    void createTables() throws Exception {
         PostgreSQLCreateStatements createStatements = new PostgreSQLCreateStatements(
-            BackupRepo.getIdFields());
+            BackupRepo.getIdFields(), new AutowireHelper().createChoiceTypes());
         Map<String, ArrayList<Attribute>> tablesToSchema = new HashMap<>();
         PostgreSQLCreateStatements.Result result = createStatements.run(AuditFile.class,
             tablesToSchema);
@@ -110,9 +116,10 @@ class PostgreSQLCreateStatementsTest {
 
     @Disabled
     @Test
-    void deleteTables() {
+        //TODO RK all of this code should maybe be moved into a separate application?
+    void deleteTables() throws Exception {
         PostgreSQLCreateStatements createStatements = new PostgreSQLCreateStatements(
-            BackupRepo.getIdFields());
+            BackupRepo.getIdFields(), new AutowireHelper().createChoiceTypes());
         Map<String, ArrayList<Attribute>> tablesToSchema = new HashMap<>();
         PostgreSQLCreateStatements.Result result = createStatements.run(AuditFile.class,
             tablesToSchema);
@@ -138,10 +145,16 @@ class PostgreSQLCreateStatementsTest {
     @Test
     void derivesSchemaPackageNameTest() {
         PostgreSQLCreateStatements create = new PostgreSQLCreateStatements(
-            BackupRepo.getIdFields());
+            BackupRepo.getIdFields(), new AutowireHelper().createChoiceTypes());
         assertAll(() -> assertEquals("com.r.bazaar.entity.schema.v1", create.derivePackageName(
                 "com.r.bazaar.entity.schema.v1.AuditFile$GeneralLedgerEntries$Journal$Transaction$Line"),
             "package name"));
     }
 
+    @Test
+    void getAuxRelations() throws Exception {
+        PostgreSQLCreateStatements create = new PostgreSQLCreateStatements(
+            BackupRepo.getIdFields(), new AutowireHelper().createChoiceTypes());
+        logger.info(create.getAuxRelations("schema_for_testing"));
+    }
 }

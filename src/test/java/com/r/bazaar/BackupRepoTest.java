@@ -8,6 +8,7 @@ import com.r.bazaar.output.persist.PostgreSQLDAO;
 import com.r.bazaar.output.persist.SystemSpecifics;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import org.easymock.EasyMock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,8 +40,8 @@ class BackupRepoTest {
 
     @Test
     void filter_CorrectValues() {
-        Map<String, String> exp = new HashMap<>();
-        exp.put("aux_relations", "value");
+        Map<String, Set<String>> exp = new HashMap<>();
+        exp.put("aux_relations", Set.of("value"));
         EasyMock.expect(dao.getGenericTablesToGenericFields(EasyMock.anyInt(), EasyMock.anyString(),
             EasyMock.anyObject())).andReturn(exp);
     }
