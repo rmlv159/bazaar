@@ -367,8 +367,8 @@ public class PostgreSQLCreateStatements {
                 new IllegalStateException("Called too early, should be after schema generated"));
         }
         String statement = "CREATE TABLE " + schema + ".aux_relations ("
-            + "table_name varchar, "
-            + "field_name varchar, "
+            + "system_default_table_name varchar, "
+            + "system_default_field_name varchar, "
             + "value varchar, "
             + "aux_relation_targets_system_default varchar, "
             + "cache_1to1_generic varchar, "

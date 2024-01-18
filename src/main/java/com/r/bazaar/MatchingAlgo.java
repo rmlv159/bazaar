@@ -190,9 +190,8 @@ public class MatchingAlgo {
                 break;
             } else {
                 id1To1 = dao.putAndGetId(genericTableName,
-                    //TODO RK is -1 correct now after credit was always 0.0?
-                    List.of(oneToOneOuterInsertion.filteredGenericFieldNames.get(i-1), "credit_choice"),
-                    List.of(oneToOneOuterInsertion.data.get(i), "yes"));
+                    List.of(oneToOneOuterInsertion.filteredGenericFieldNames.get(i+1), "credit_choice"),
+                    List.of(oneToOneOuterInsertion.data.get(i+1), "yes"));
             }
         }
         insertions.get(cacheLocationGenericTableName).filteredGenericFieldNames.add(

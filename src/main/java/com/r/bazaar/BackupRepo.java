@@ -118,7 +118,11 @@ public class BackupRepo {
         //input validation has already been done
         List<String> genericTableNames = systemSpecifics.lookUpGenericTableNames(client,
             tableNameReceived);
+
+        //TODO RK this doesn't work if instances are distributed across a cluster, every
+        // pod/instance needs to know the schema
         ArrayList<Field> schemaReceived = schemaCache.get(tableNameReceived);
+
         Map<String, InsertionPreparedMatch> insertions = matchingAlgo.filter(clientId, client.getSystemName(),
             genericTableNames, schemaReceived, dataReceived, tableNameReceived);
 
