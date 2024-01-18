@@ -47,7 +47,7 @@ public class MatchingAlgo {
     }
 
     //TODO RK genericTableNames should be unique/Set
-    protected Map<String, InsertionPreparedMatch> filter(int clientId, String systemName,
+    protected Map<String, InsertionPreparedMatch> filter(int clientId, String backupId, String systemName,
         List<String> genericTableNames, ArrayList<Field> schema, ArrayList<String> data,
         String systemDefaultTableName) {
 
@@ -101,6 +101,18 @@ public class MatchingAlgo {
                     insertion.data = new ArrayList<>();
                     insertion.cacheType = new ArrayList<>();
                     insertion.cacheLocation = new ArrayList<>();
+                }
+                if (genericTableEntry.getKey().equals("master_data_relations_retain")) {
+                    //TODO RK do something here that makes more sense
+                    if (systemName.equals("NAV18")) {
+                        if (systemDefaultFieldName.equals("LCY Code")) {
+                            String companyCode = dao.getCompanyCode(clientId);
+                            insertion.filteredGenericFieldNames.add("key");
+                            insertion.data.add(companyCode);
+                            insertion.cacheType.add("");
+                            insertion.cacheLocation.add("");
+                        }
+                    }
                 }
                 insertion.filteredGenericFieldNames.add(genericFieldName);
                 insertion.data.add(value);

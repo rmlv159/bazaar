@@ -89,6 +89,7 @@ public class PostgreSQLCreateStatements {
         parseStructuresForRelationalDB(null, structure, tablesToSchema, false);
         List<String> statements = createStatement(tablesToSchema);
         statements.add(getAuxRelations());
+        statements.add(getMasterDataRelationsRetain());
         result.setSeparateStatements(new HashSet<>(statements));
         result.setFullStatement(String.join("", statements));
         result.setSchema(safTSchema);
@@ -360,6 +361,10 @@ public class PostgreSQLCreateStatements {
         return getAuxRelations(safTSchema);
     }
 
+    protected String getMasterDataRelationsRetain() throws Exception {
+        return getMasterDataRelationsRetain(safTSchema);
+    }
+
     protected String getAuxRelations(String schema) throws Exception {
         if (null == schema) {
             //I want this adequate exception to be checked
@@ -373,6 +378,20 @@ public class PostgreSQLCreateStatements {
             + "aux_relation_targets_system_default varchar, "
             + "cache_1to1_generic varchar, "
             + "cache_fact_generic varchar, ";
+        return statement + idFields.stream()
+            .map(i -> "meta_" + i + " varchar")
+            .collect(Collectors.joining(", ")) + ");";
+    }
+
+    protected String getMasterDataRelationsRetain(String schema) throws Exception {
+        if (null == schema) {
+            //I want this adequate exception to be checked
+            throw new Exception(
+                new IllegalStateException("Called too early, should be after schema generated"));
+        }
+        String statement = "CREATE TABLE " + schema + ".master_data_relations_retain ("
+            + "key varchar, "
+            + "value varchar, ";
         return statement + idFields.stream()
             .map(i -> "meta_" + i + " varchar")
             .collect(Collectors.joining(", ")) + ");";

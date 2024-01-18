@@ -23,6 +23,12 @@ public class PostgreSQLDAO implements DAO {
     //TODO string is getting logged! Remove!
     private final String connectionString;
 
+    //TODO avoid injection attacks
+//TODO remove schema from here and add to table name
+
+    //TODO schema needs to be passed in from higher up
+    private static final String SCHEMA = "saf_t_v1";
+
     public PostgreSQLDAO() {
         String db = "SecuReplic";
         this.connectionString = "jdbc:postgresql://"
@@ -91,7 +97,7 @@ public class PostgreSQLDAO implements DAO {
 
         //TODO avoid injection attacks
         //TODO remove schema from here and add to table name
-        String insertSql = String.format("INSERT INTO erp.%s (%s) VALUES (%s);", tableName,
+        String insertSql = String.format("INSERT INTO " + SCHEMA + ".%s (%s) VALUES (%s);", tableName,
             fieldNamesStr, dataValues);
 
         try (Connection connection = DriverManager.getConnection(connectionString);
@@ -111,11 +117,6 @@ public class PostgreSQLDAO implements DAO {
             .map(value -> "'" + value + "'")
             .collect(Collectors.joining(", "));
 
-        //TODO avoid injection attacks
-        //TODO remove schema from here and add to table name
-
-        //TODO schema needs to be passed in from higher up
-        String SCHEMA = "saf_t_v1";
         String insertSql = String.format("INSERT INTO " + SCHEMA + ".%s (%s) VALUES (%s);", tableName,
             fieldNamesStr, dataValues);
 

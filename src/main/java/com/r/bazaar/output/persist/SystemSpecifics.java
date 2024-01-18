@@ -31,7 +31,7 @@ public class SystemSpecifics {
         return null;
     }
 
-    public String nav18(String rawTableName, String companyCode) {
+    public String BuildNAV18TableName(String rawTableName, String companyCode) {
         return new StringBuilder()
             .append("[dbo].[")
             .append(companyCode)

@@ -150,11 +150,4 @@ class PostgreSQLCreateStatementsTest {
                 "com.r.bazaar.entity.schema.v1.AuditFile$GeneralLedgerEntries$Journal$Transaction$Line"),
             "package name"));
     }
-
-    @Test
-    void getAuxRelations() throws Exception {
-        PostgreSQLCreateStatements create = new PostgreSQLCreateStatements(
-            BackupRepo.getIdFields(), new AutowireHelper().createChoiceTypes());
-        logger.info(create.getAuxRelations("schema_for_testing"));
-    }
 }

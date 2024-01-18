@@ -6,7 +6,6 @@ import com.r.bazaar.input.Decoder;
 import com.r.bazaar.lib.model.IntelliSyncConfig;
 import com.r.bazaar.entity.model.Field;
 import com.r.bazaar.output.persist.DAO;
-import com.r.bazaar.output.persist.PostgreSQLDAO.Row;
 import com.r.bazaar.output.persist.SystemSpecifics;
 import com.r.bazaar.output.report.Packager;
 import com.r.bazaar.lib.model.Backup;
@@ -15,7 +14,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,14 +64,14 @@ public class BackupRepo {
                     String systemName = dao.getSystemName(clientId);
                     client.setSystemName(systemName);
                     if ("NAV18".equals(systemName)) {
-                        return systemSpecifics.nav18(rawTableName, companyCode);
+                        return systemSpecifics.BuildNAV18TableName(rawTableName, companyCode);
                     }
                     return "";
                 })
                 .collect(Collectors.toSet());
             //TODO RK revert
 //            intelliSyncConfig.getRelevantTables().addAll(preparedTablesNames);
-            intelliSyncConfig.getRelevantTables().addAll(Set.of("[dbo].[CRONUS Danmark A_S$G_L Entry]"));
+            intelliSyncConfig.getRelevantTables().addAll(Set.of("[dbo].[CRONUS Danmark A_S$General Ledger Setup]"));
 
             client.
                 setIntelliSyncConfig(intelliSyncConfig);
@@ -109,7 +107,7 @@ public class BackupRepo {
         schemaCache.put(tableName, schema);
     }
 
-    public void saveRow(int clientId, String tableNameReceived, ArrayList<String> dataReceived) {
+    public void saveRow(int clientId, String backupId, String tableNameReceived, ArrayList<String> dataReceived) {
         Client client = clientCache.get(clientId);
         ArrayList<String> seqTypes = seqTypesCache.get(tableNameReceived);
         if (null == seqTypes) {
@@ -123,7 +121,7 @@ public class BackupRepo {
         // pod/instance needs to know the schema
         ArrayList<Field> schemaReceived = schemaCache.get(tableNameReceived);
 
-        Map<String, InsertionPreparedMatch> insertions = matchingAlgo.filter(clientId, client.getSystemName(),
+        Map<String, InsertionPreparedMatch> insertions = matchingAlgo.filter(clientId, backupId, client.getSystemName(),
             genericTableNames, schemaReceived, dataReceived, tableNameReceived);
 
         for (var pair : insertions.entrySet()) {
