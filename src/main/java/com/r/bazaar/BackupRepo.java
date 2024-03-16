@@ -6,6 +6,7 @@ import com.r.bazaar.input.Decoder;
 import com.r.bazaar.lib.model.IntelliSyncConfig;
 import com.r.bazaar.entity.model.Field;
 import com.r.bazaar.output.persist.DAO;
+import com.r.bazaar.output.persist.DAO.AuxRelationRow;
 import com.r.bazaar.output.persist.SystemSpecifics;
 import com.r.bazaar.output.report.Packager;
 import com.r.bazaar.lib.model.Backup;
@@ -71,7 +72,8 @@ public class BackupRepo {
                 .collect(Collectors.toSet());
             //TODO RK revert
 //            intelliSyncConfig.getRelevantTables().addAll(preparedTablesNames);
-            intelliSyncConfig.getRelevantTables().addAll(Set.of("[dbo].[CRONUS Danmark A_S$General Ledger Setup]"));
+            intelliSyncConfig.getRelevantTables()
+                .addAll(Set.of("[dbo].[CRONUS Danmark A_S$VAT Entry]"));
 
             client.
                 setIntelliSyncConfig(intelliSyncConfig);
@@ -107,7 +109,8 @@ public class BackupRepo {
         schemaCache.put(tableName, schema);
     }
 
-    public void saveRow(int clientId, String backupId, String tableNameReceived, ArrayList<String> dataReceived) {
+    public void saveRow(int clientId, String backupId, String tableNameReceived,
+        ArrayList<String> dataReceived) {
         Client client = clientCache.get(clientId);
         ArrayList<String> seqTypes = seqTypesCache.get(tableNameReceived);
         if (null == seqTypes) {
@@ -121,13 +124,24 @@ public class BackupRepo {
         // pod/instance needs to know the schema
         ArrayList<Field> schemaReceived = schemaCache.get(tableNameReceived);
 
-        Map<String, InsertionPreparedMatch> insertions = matchingAlgo.filter(clientId, backupId, client.getSystemName(),
-            genericTableNames, schemaReceived, dataReceived, tableNameReceived);
+        Map<String, InsertionPreparedMatch> insertions = matchingAlgo.filter(clientId, backupId,
+            client.getSystemName(), genericTableNames, schemaReceived, dataReceived,
+            tableNameReceived);
 
         for (var pair : insertions.entrySet()) {
-            dao.put(pair.getKey(), pair.getValue().filteredGenericFieldNames, pair.getValue().data);
+            dao.put(pair.getKey(), pair.getValue().genericFieldNames, pair.getValue().data);
 //            packager.run(data);
         }
+    }
+
+    public void backupDone(int clientId, String backupId) {
+        //TODO RK get this from somewhere, when structure is better
+        List<String> auxRelationsFieldNames = List.of("system_default_table_name",
+            "systemDefaultFieldName",
+            "value", "aux_relation_target_system_default", "auxRelationSourceGeneric",
+            "cache_1to1_generic", "cache_fact_generic");
+        dao.getAndProcessAuxRelationsData(clientId, backupId,
+            auxRelationsFieldNames, matchingAlgo::processAuxRelation);
     }
 
     private void addIdFields(ArrayList<String> fields) {
@@ -147,4 +161,5 @@ public class BackupRepo {
     public static List<String> getIdFields() {
         return ID_FIELDS;
     }
+
 }

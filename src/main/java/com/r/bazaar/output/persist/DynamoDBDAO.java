@@ -9,12 +9,12 @@ import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
 import com.r.bazaar.entity.model.Field;
-import com.r.bazaar.output.persist.PostgreSQLDAO.Row;
+import com.r.bazaar.output.persist.PostgreSQLDAO.GenericTableRow;
 import com.typesafe.config.Config;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 public class DynamoDBDAO implements DAO {
@@ -117,7 +117,7 @@ public class DynamoDBDAO implements DAO {
     }
 
     @Override
-    public Map<String, Row> getSystemDefaultToGeneric(int clientId, String systemName,
+    public Map<String, GenericTableRow> getSystemDefaultToGeneric(int clientId, String systemName,
         List<String> tableNames) {
         //TODO impl
         return null;
@@ -132,7 +132,7 @@ public class DynamoDBDAO implements DAO {
     }
 
     @Override
-    public List<String> getGenericTableNames(String defaultSystemTableName) {
+    public List<String> getGenericTableNames(String defaultSystemTableName, String s) {
         //TODO impl
         return null;
     }
@@ -147,5 +147,29 @@ public class DynamoDBDAO implements DAO {
     public List<Field> getSchema(String genericTableName) {
         //TODO impl
         return null;
+    }
+
+    @Override
+    public void getAndProcessAuxRelationsData(int clientId, String backupId,
+        List<String> auxRelationsFieldNames, Consumer<AuxRelationRow> consumer) {
+        //TODO impl
+    }
+
+    @Override
+    public AuxRelationRow getOneAuxRelationRow(int clientId, String backupId,
+        List<String> auxRelationsFieldNames, String systemDefaultTableName,
+        String systemDefaultFieldName, String value) {
+        //TODO impl
+        return null;
+    }
+
+    @Override
+    public void removeAuxRelationRow(AuxRelationRow row) {
+        //TODO impl
+    }
+
+    @Override
+    public void updateGenericTable(GenericTableRow originalGenericRow, String first, String last) {
+        //TODO impl
     }
 }

@@ -2,10 +2,6 @@ package com.r.bazaar;
 
 import com.google.common.collect.Table;
 import com.r.bazaar.output.persist.DAO;
-import com.r.bazaar.output.persist.PostgreSQLDAO.Row;
-import java.util.Map;
-import java.util.function.BiConsumer;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 

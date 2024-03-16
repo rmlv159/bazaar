@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class PostgreSQLDAO implements DAO {
@@ -97,7 +98,8 @@ public class PostgreSQLDAO implements DAO {
 
         //TODO avoid injection attacks
         //TODO remove schema from here and add to table name
-        String insertSql = String.format("INSERT INTO " + SCHEMA + ".%s (%s) VALUES (%s);", tableName,
+        String insertSql = String.format("INSERT INTO " + SCHEMA + ".%s (%s) VALUES (%s);",
+            tableName,
             fieldNamesStr, dataValues);
 
         try (Connection connection = DriverManager.getConnection(connectionString);
@@ -117,7 +119,8 @@ public class PostgreSQLDAO implements DAO {
             .map(value -> "'" + value + "'")
             .collect(Collectors.joining(", "));
 
-        String insertSql = String.format("INSERT INTO " + SCHEMA + ".%s (%s) VALUES (%s);", tableName,
+        String insertSql = String.format("INSERT INTO " + SCHEMA + ".%s (%s) VALUES (%s);",
+            tableName,
             fieldNamesStr, dataValues);
 
         try (Connection connection = DriverManager.getConnection(connectionString);
@@ -215,17 +218,18 @@ public class PostgreSQLDAO implements DAO {
     }
 
     @Override
-    public Map<String, Row> getSystemDefaultToGeneric(int clientId,
+    public Map<String, GenericTableRow> getSystemDefaultToGeneric(int clientId,
         String systemName, List<String> tableNames) {
         //TODO make nicer
-        Map<String, Row> systemDefaultToGeneric = new HashMap<>();
+        Map<String, GenericTableRow> systemDefaultToGeneric = new HashMap<>();
         String query =
             "SELECT a.generic_table_name, "
                 + "a.generic_field_name, "
                 + "a.system_default_table_name, "
-                + "a.system_default_field_name, "
+                + "a.systemDefaultFieldName, "
                 + "a.schema, "
-                + "a.aux_relation_targets_system_default, "
+                + "a.aux_relation_target_system_default, "
+                + "a.aux_relation_source_generic, "
                 + "a.cache_1to1_generic, "
                 + "a.cache_fact_generic "
                 + "FROM erp.system_schema_mapping a "
@@ -248,22 +252,22 @@ public class PostgreSQLDAO implements DAO {
             }
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                String systemDefaultFieldName = resultSet.getString("system_default_field_name");
+                String systemDefaultFieldName = resultSet.getString("systemDefaultFieldName");
                 if (null == systemDefaultFieldName) {
                     continue;
                 }
+                GenericTableRow genericTableRow = new GenericTableRow(
+                    resultSet.getString("generic_table_name"),
+                    resultSet.getString("generic_field_name"),
+                    resultSet.getString("schema"),
+                    resultSet.getString("aux_relation_target_system_default"),
+                    resultSet.getString("aux_relation_source_generic"),
+                    resultSet.getString("cache_1to1_generic"),
+                    resultSet.getString("cache_fact_generic")
+                );
                 systemDefaultToGeneric.put(
-                    resultSet.getString("system_default_table_name")
-                        + "."
-                        + systemDefaultFieldName,
-
-                    new Row(resultSet.getString("generic_table_name"),
-                        resultSet.getString("generic_field_name"),
-                        resultSet.getString("schema"),
-                        resultSet.getString("aux_relation_targets_system_default"),
-                        resultSet.getString("cache_1to1_generic"),
-                        resultSet.getString("cache_fact_generic")
-                    ));
+                    resultSet.getString("system_default_table_name") + "." + systemDefaultFieldName,
+                    genericTableRow);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -271,12 +275,13 @@ public class PostgreSQLDAO implements DAO {
         return systemDefaultToGeneric;
     }
 
-    public record Row(String genericTableName,
-                      String genericFieldName,
-                      String schema,
-                      String auxRelationTargetsSystemDefault,
-                      String cache1To1Generic,
-                      String cacheFactGeneric) {
+    public record GenericTableRow(String genericTableName,
+                                  String genericFieldName,
+                                  String schema,
+                                  String auxRelationTargetSystemDefault,
+                                  String auxRelationSourceGeneric,
+                                  String cache1To1Generic,
+                                  String cacheFactGeneric) {
 
     }
 
@@ -285,7 +290,7 @@ public class PostgreSQLDAO implements DAO {
         String systemName, List<String> genericTableNames) {
         //TODO make nicer
         Map<String, String> genericFieldsToSystemDefaultFields = new HashMap<>();
-        String query = "SELECT a.generic_field_name, a.system_default_field_name "
+        String query = "SELECT a.generic_field_name, a.systemDefaultFieldName "
             + "FROM erp.system_schema_mapping a "
             + "LEFT JOIN erp.systems b "
             + " ON a.system_id = b.id "
@@ -308,7 +313,7 @@ public class PostgreSQLDAO implements DAO {
             while (resultSet.next()) {
                 genericFieldsToSystemDefaultFields.put(
                     resultSet.getString("generic_field_name"),
-                    resultSet.getString("system_default_field_name"));
+                    resultSet.getString("systemDefaultFieldName"));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -317,17 +322,21 @@ public class PostgreSQLDAO implements DAO {
     }
 
     @Override
-    public List<String> getGenericTableNames(String defaultSystemTableName) {
+    public List<String> getGenericTableNames(String defaultSystemTableName, String systemName) {
         //TODO make nicer
         List<String> tableNames = new ArrayList<>();
         String query = "SELECT generic_table_name "
-            + "FROM erp.system_schema_mapping "
-            + "WHERE system_default_table_name = ?";
+            + "FROM erp.system_schema_mapping m "
+            + "LEFT JOIN erp.systems s "
+            + "     ON m.system_id = s.id "
+            + "WHERE system_default_table_name = ? "
+            + "AND s.system_name = ?;";
         try (
             Connection connection = DriverManager.getConnection(connectionString);
             PreparedStatement preparedStatement = connection.prepareStatement(query)
         ) {
             preparedStatement.setString(1, defaultSystemTableName);
+            preparedStatement.setString(2, systemName);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 tableNames.add(resultSet.getString("generic_table_name"));
@@ -345,9 +354,10 @@ public class PostgreSQLDAO implements DAO {
             + "a.generic_table_name, "
             + "a.generic_field_name, "
             + "a.system_default_table_name, "
-            + "a.system_default_field_name, "
+            + "a.systemDefaultFieldName, "
             + "a.schema, "
-            + "a.aux_relation_targets_system_default, "
+            + "a.aux_relation_target_system_default, "
+            + "a.aux_relation_source_generic, "
             + "a.cache_1to1_generic, "
             + "a.cache_fact_generic, "
             + "b.system_name " //TODO RK later swap with id, further upstream
@@ -369,13 +379,16 @@ public class PostgreSQLDAO implements DAO {
                 container.put(tableIndex, "system_default_table_name",
                     Optional.ofNullable(resultSet.getString("system_default_table_name"))
                         .orElse(""));
-                container.put(tableIndex, "system_default_field_name",
-                    Optional.ofNullable(resultSet.getString("system_default_field_name"))
+                container.put(tableIndex, "systemDefaultFieldName",
+                    Optional.ofNullable(resultSet.getString("systemDefaultFieldName"))
                         .orElse(""));
                 container.put(tableIndex, "schema",
                     Optional.ofNullable(resultSet.getString("schema")).orElse(""));
-                container.put(tableIndex, "aux_relation_targets_system_default",
-                    Optional.ofNullable(resultSet.getString("aux_relation_targets_system_default"))
+                container.put(tableIndex, "auxRelationTargetSystemDefault",
+                    Optional.ofNullable(resultSet.getString("aux_relation_target_system_default"))
+                        .orElse(""));
+                container.put(tableIndex, "auxRelationSourceGeneric",
+                    Optional.ofNullable(resultSet.getString("aux_relation_source_generic"))
                         .orElse(""));
                 container.put(tableIndex, "cache_1to1_generic",
                     Optional.ofNullable(resultSet.getString("cache_1to1_generic")).orElse(""));
@@ -410,6 +423,131 @@ public class PostgreSQLDAO implements DAO {
             e.printStackTrace();
         }
         return schema;
+    }
+
+    @Override
+    public void getAndProcessAuxRelationsData(int clientId, String backupId,
+        List<String> auxRelationsFieldNames, Consumer<AuxRelationRow> consumer) {
+        String query = "SELECT %s"
+            + "    FROM " + SCHEMA + ".aux_relations"
+            + "    WHERE meta_customer_id = ?"
+            + "    AND meta_backup_id = ?;";
+        query = String.format(query, String.join(", ", auxRelationsFieldNames));
+        try (
+            Connection connection = DriverManager.getConnection(connectionString);
+            PreparedStatement preparedStatement = connection.prepareStatement(query)
+        ) {
+            //TODO RK will lowercase always be correct?
+            preparedStatement.setString(1, String.valueOf(clientId));
+            preparedStatement.setString(2, backupId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            String companyCode = getCompanyCode(clientId);
+            String systemName = getSystemName(clientId);
+            while (resultSet.next()) {
+                String systemDefaultTableName = resultSet.getString(
+                    "system_default_table_name");
+                String systemDefaultFieldName = resultSet.getString("system_default_field_name");
+                String value = resultSet.getString("value");
+                String auxRelationTargetSystemDefault = resultSet.getString(
+                    "aux_relation_target_system_default");
+                String auxRelationSourceGeneric = resultSet.getString(
+                    "aux_relation_source_generic");
+                String cache1to1Generic = resultSet.getString("cache_1to1_generic");
+                String cacheFactGeneric = resultSet.getString("cache_fact_generic");
+
+                //TODO bad bad bad, new objects, garbage?
+                AuxRelationRow row = new AuxRelationRow(systemDefaultTableName,
+                    systemDefaultFieldName, value,
+                    auxRelationTargetSystemDefault, auxRelationSourceGeneric,
+                    cache1to1Generic, cacheFactGeneric,
+                    companyCode, clientId, systemName, backupId);
+
+                consumer.accept(row);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public AuxRelationRow getOneAuxRelationRow(int clientId, String backupId,
+        List<String> auxRelationsFieldNames, String systemDefaultTableName,
+        String systemDefaultFieldName, String value) {
+
+        Map<String, List<String>> data = new HashMap<>();
+        String query = "SELECT %s"
+            + "    FROM " + SCHEMA + ".aux_relations"
+            + "    WHERE meta_customer_id = ?"
+            + "    AND meta_backup_id = ?"
+            + "    AND system_default_table_name = ?"
+            + "    AND system_default_field_name = ?"
+            + "    AND value = ?;";
+        query = String.format(query, String.join(", ", auxRelationsFieldNames));
+        try (
+            Connection connection = DriverManager.getConnection(connectionString);
+            PreparedStatement preparedStatement = connection.prepareStatement(query)
+        ) {
+            //TODO RK will lowercase always be correct?
+            preparedStatement.setString(1, String.valueOf(clientId));
+            preparedStatement.setString(2, backupId);
+            preparedStatement.setString(3, systemDefaultTableName);
+            preparedStatement.setString(4, systemDefaultFieldName);
+            preparedStatement.setString(5, value);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            String companyCode = getCompanyCode(clientId);
+            String systemName = getSystemName(clientId);
+
+            resultSet.next();
+
+            value = resultSet.getString("value");
+            String auxRelationTargetSystemDefault = resultSet.getString(
+                "aux_relation_target_system_default");
+            String auxRelationSourceGeneric = resultSet.getString(
+                "aux_relation_source_generic");
+            String cache1to1Generic = resultSet.getString("cache_1to1_generic");
+            String cacheFactGeneric = resultSet.getString("cache_fact_generic");
+
+            //TODO bad bad bad, new objects, garbage?
+            return new AuxRelationRow(resultSet.getString("system_default_table_name"),
+                resultSet.getString("system_default_field_name"), value,
+                auxRelationTargetSystemDefault, auxRelationSourceGeneric, cache1to1Generic,
+                cacheFactGeneric, companyCode, clientId, systemName, backupId);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    public void removeAuxRelationRow(AuxRelationRow row) {
+        //TODO RK impl
+    }
+
+    @Override
+    public void updateGenericTable(GenericTableRow originalGenericRow, String lookUpId,
+        String insertId) {
+        String idField = originalGenericRow.auxRelationSourceGeneric + "_id";
+        String query = "UPDATE " + SCHEMA + "." + originalGenericRow.genericTableName
+            + " SET " + idField + "=?"
+            + " WHERE " + +" =?";
+        query = String.format(query, String.join(", ", auxRelationsFieldNames));
+        try (
+            Connection connection = DriverManager.getConnection(connectionString);
+            PreparedStatement preparedStatement = connection.prepareStatement(query)
+        ) {
+            preparedStatement.setString(1, insertId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            String companyCode = getCompanyCode(clientId);
+            String systemName = getSystemName(clientId);
+            while (resultSet.next()) {
+                String systemDefaultTableName = resultSet.getString(
+                    "system_default_table_name");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public String getConnectionString() {

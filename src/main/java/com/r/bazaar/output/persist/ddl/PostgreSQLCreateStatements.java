@@ -375,7 +375,8 @@ public class PostgreSQLCreateStatements {
             + "system_default_table_name varchar, "
             + "system_default_field_name varchar, "
             + "value varchar, "
-            + "aux_relation_targets_system_default varchar, "
+            + "aux_relation_target_system_default varchar, "
+            + "aux_relation_source_generic varchar, "
             + "cache_1to1_generic varchar, "
             + "cache_fact_generic varchar, ";
         return statement + idFields.stream()

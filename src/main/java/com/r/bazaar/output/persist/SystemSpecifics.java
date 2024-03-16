@@ -24,7 +24,8 @@ public class SystemSpecifics {
                 .replace(companyCode, "")
                 .replace("$", "")
                 .replace("]", "");
-            List<String> genericTableNames = dao.getGenericTableNames(defaultSystemTableName);
+            List<String> genericTableNames = dao.getGenericTableNames(defaultSystemTableName,
+                row.systemName());
             return genericTableNames;
 //        }
         }
